@@ -5,7 +5,8 @@
 # --- toggles ---
 install_claude_desktop: true
 install_google_chrome: true
-install_ollama: true
+install_ollama: false
+install_flatpak: false
 # Lab/scientific extras (NFS, PostScript viewer, terminals, etc.)
 enable_lab_packages: true
 # Full LMTO stack: apt deps, Intel oneAPI (if installers present), env, build
@@ -16,7 +17,6 @@ apt_packages_common:
   - apt-file
   - apt-transport-https
   - curl
-  - flatpak
   - gedit
   - gh
   - git
@@ -61,7 +61,7 @@ snaps:
   - name: telegram-desktop
   - name: claude-code
 
-# --- flatpak ---
+# --- flatpak (disabled via install_flatpak for now) ---
 flatpak_remote_name: flathub
 flatpak_remote_url: https://flathub.org/repo/flathub.flatpakrepo
 
@@ -104,7 +104,10 @@ ollama_tarball_url: https://ollama.com/download/ollama-linux-amd64.tar.zst
 
 # Source tree must already exist (copy/rsync/symlink from the other machine).
 # Expected layout matches working box: ~/src with configure, MAK/, LMTO/, …
-lmto_src_dir: "{{ ansible_env.HOME }}/src"
+# Prefer login user home when playbook is run via sudo --preserve-env=HOME
+bootstrap_home: "{{ ansible_facts['env']['HOME'] | default(lookup('env', 'HOME'), true) }}"
+bootstrap_user: "{{ lookup('env', 'SUDO_USER') | default(ansible_facts['user_id'], true) }}"
+lmto_src_dir: "{{ bootstrap_home }}/src"
 
 # LSYSTEM selects ~/bin/$LSYSTEM and ~/lib/$LSYSTEM (see Readme.1st)
 lmto_lsystem: Linux
@@ -140,11 +143,11 @@ lmto_nfs_fstab: true
 # Convenience symlinks into the home directory (created only if targets exist)
 lmto_home_symlinks:
   - src: /dep24
-    dest: "{{ ansible_env.HOME }}/dep24"
+    dest: "{{ bootstrap_home }}/dep24"
   - src: /dep24/dmazur/R
-    dest: "{{ ansible_env.HOME }}/R_dep24"
+    dest: "{{ bootstrap_home }}/R_dep24"
   - src: /dep24/dmazur/TeX
-    dest: "{{ ansible_env.HOME }}/TeX_dep24"
+    dest: "{{ bootstrap_home }}/TeX_dep24"
 
 # Shell environment: profile.d + ensure ~/.profile sources setvars (as on working box)
 lmto_profile_script: /etc/profile.d/lmto.sh

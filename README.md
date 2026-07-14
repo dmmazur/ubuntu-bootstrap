@@ -1,6 +1,6 @@
 # ubuntu-bootstrap
 
-Ansible playbooks to set up a local Ubuntu workstation (apt, snaps, flatpaks,
+Ansible playbooks to set up a local Ubuntu workstation (apt, snaps,
 local `.deb`s, and optional tools).
 
 ## Quick start
@@ -12,9 +12,16 @@ ansible-galaxy collection install community.general
 
 # optional: download Cursor / VeraCrypt .debs into files/ (see below)
 
-ansible-playbook playbook.yml --ask-become-pass --check --diff   # dry-run
-ansible-playbook playbook.yml --ask-become-pass
+# Prefer this if become/password prompts time out on this machine:
+sudo --preserve-env=HOME \
+  ansible-playbook playbook.yml --tags common -e ansible_become=false
+
+# More Ansible detail:
+sudo --preserve-env=HOME \
+  ansible-playbook playbook.yml --tags common -e ansible_become=false -v
 ```
+
+Section banners (`>>> COMMON`, …) and per-package task names show progress.
 
 ## Tags
 
@@ -23,11 +30,11 @@ ansible-playbook playbook.yml --ask-become-pass
 | `common` | Shared apt packages (includes `gh`) |
 | `lab` | NFS, gv, emacs, terminals, etc. (`enable_lab_packages`) |
 | `snaps` | VS Code, Telegram, Claude Code |
-| `flatpak` | Flathub + Newelle, Flatseal |
+| `flatpak` | Flathub + Newelle, Flatseal (`install_flatpak`, currently off) |
 | `debs` | Cursor, VeraCrypt from `files/` |
 | `claude` | Claude Desktop apt repo + package |
 | `chrome` | Google Chrome apt repo + package |
-| `ollama` | Ollama tarball + systemd service |
+| `ollama` | Ollama tarball + systemd (`install_ollama`, currently off) |
 | `lmto` | LMTO stack: apt deps, Intel oneAPI, env, NFS, configure/make |
 
 Examples:

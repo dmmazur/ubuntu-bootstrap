@@ -1,47 +1,93 @@
 ---
 # Local Ubuntu workstation bootstrap.
 # Tags: common, snaps, flatpak, debs, claude, chrome, ollama, lab, lmto
+# Tip: add -v or -vv for more Ansible detail.
 
 - name: Bootstrap local Ubuntu
   hosts: local
   become: true
   gather_facts: true
 
-  pre_tasks:
-    - name: Build apt package list from enabled profiles
-      ansible.builtin.set_fact:
-        apt_packages: "{{ apt_packages_common + (apt_packages_lab if enable_lab_packages | bool else []) }}"
-      tags: [always]
-
   tasks:
-    - name: Install apt packages
+    - name: ">>> COMMON — {{ apt_packages_common | length }} apt package(s)"
+      ansible.builtin.debug:
+        msg: "{{ apt_packages_common }}"
+      tags: [common]
+
+    - name: Update apt cache
       ansible.builtin.apt:
-        name: "{{ apt_packages }}"
-        state: present
         update_cache: true
-      tags: [common, lab]
+        cache_valid_time: 3600
+      tags: [common, lab, claude, chrome, lmto]
+
+    - name: Install common apt package
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ apt_packages_common }}"
+      loop_control:
+        label: "{{ item }}"
+      tags: [common]
+
+    - name: ">>> LAB — {{ apt_packages_lab | length }} apt package(s)"
+      ansible.builtin.debug:
+        msg: "{{ apt_packages_lab }}"
+      when: enable_lab_packages | bool
+      tags: [lab]
+
+    - name: Install lab apt package
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ apt_packages_lab }}"
+      loop_control:
+        label: "{{ item }}"
+      when: enable_lab_packages | bool
+      tags: [lab]
+
+    - name: ">>> FLATPAK — {{ flatpaks | length }} app(s)"
+      ansible.builtin.debug:
+        msg: "{{ flatpaks }}"
+      when: install_flatpak | bool
+      tags: [flatpak]
 
     - name: Ensure Flathub remote exists
       community.general.flatpak_remote:
         name: "{{ flatpak_remote_name }}"
         flatpakrepo_url: "{{ flatpak_remote_url }}"
         state: present
+      when: install_flatpak | bool
       tags: [flatpak]
 
-    - name: Install Flatpak applications
+    - name: Install Flatpak app
       community.general.flatpak:
         name: "{{ item }}"
         state: present
       loop: "{{ flatpaks }}"
+      loop_control:
+        label: "{{ item }}"
+      when: install_flatpak | bool
       tags: [flatpak]
 
-    - name: Install snap packages
+    - name: ">>> SNAPS — {{ snaps | length }} package(s)"
+      ansible.builtin.debug:
+        msg: "{{ snaps | map(attribute='name') | list }}"
+      tags: [snaps]
+
+    - name: Install snap package
       community.general.snap:
         name: "{{ item.name }}"
         classic: "{{ item.classic | default(false) }}"
         state: present
       loop: "{{ snaps }}"
+      loop_control:
+        label: "{{ item.name }}"
       tags: [snaps]
+
+    - name: ">>> DEBS — patterns {{ debs | map(attribute='pattern') | list }}"
+      ansible.builtin.debug:
+        msg: "Searching {{ playbook_dir }}/files for matching .deb files"
+      tags: [debs]
 
     - name: Locate .deb packages in files/
       ansible.builtin.find:
@@ -52,7 +98,7 @@
       register: deb_finds
       tags: [debs]
 
-    - name: Install newest matching .deb for each package
+    - name: Install matching .deb
       ansible.builtin.apt:
         deb: "{{ (item.files | sort(attribute='mtime') | last).path }}"
         state: present
@@ -70,6 +116,12 @@
       loop_control:
         label: "{{ item.item.name }}"
       tags: [debs]
+
+    - name: ">>> CLAUDE DESKTOP"
+      ansible.builtin.debug:
+        msg: "Installing Claude Desktop from vendor apt repo"
+      when: install_claude_desktop | bool
+      tags: [claude]
 
     - name: Install Claude Desktop apt key
       ansible.builtin.get_url:
@@ -94,6 +146,12 @@
         update_cache: true
       when: install_claude_desktop | bool
       tags: [claude]
+
+    - name: ">>> GOOGLE CHROME"
+      ansible.builtin.debug:
+        msg: "Installing Google Chrome from Google apt repo"
+      when: install_google_chrome | bool
+      tags: [chrome]
 
     - name: Install Google Chrome signing key
       ansible.builtin.shell: |
@@ -120,6 +178,12 @@
         update_cache: true
       when: install_google_chrome | bool
       tags: [chrome]
+
+    - name: ">>> OLLAMA"
+      ansible.builtin.debug:
+        msg: "Installing Ollama from upstream tarball"
+      when: install_ollama | bool
+      tags: [ollama]
 
     - name: Ensure ollama system user exists
       ansible.builtin.user:
@@ -171,6 +235,12 @@
         daemon_reload: true
       when: install_ollama | bool
       tags: [ollama]
+
+    - name: ">>> LMTO — source {{ lmto_src_dir }}"
+      ansible.builtin.debug:
+        msg: "Running LMTO role (Intel from files/, build from ~/src)"
+      when: install_lmto | bool
+      tags: [lmto]
 
     - name: Install LMTO and prerequisites
       ansible.builtin.include_role:

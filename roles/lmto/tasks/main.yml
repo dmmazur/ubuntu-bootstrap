@@ -3,11 +3,21 @@
 # Copy or link the LMTO tree into lmto_src_dir before running this role.
 # Run with: ansible-playbook playbook.yml --ask-become-pass --tags lmto
 
-- name: Install LMTO apt prerequisites
+- name: ">>> LMTO role start — apt deps, Intel, env, optional NFS, build"
+  ansible.builtin.debug:
+    msg:
+      src: "{{ lmto_src_dir }}"
+      intel: "{{ lmto_install_intel }}"
+      nfs: "{{ lmto_nfs_enable }}"
+      build: "{{ lmto_build }}"
+
+- name: Install LMTO apt package
   ansible.builtin.apt:
-    name: "{{ apt_packages_lmto }}"
+    name: "{{ item }}"
     state: present
-    update_cache: true
+  loop: "{{ apt_packages_lmto }}"
+  loop_control:
+    label: "{{ item }}"
 
 - name: Create scratch directory for builds
   ansible.builtin.file:
@@ -19,14 +29,14 @@
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
-    owner: "{{ ansible_user_id }}"
+    owner: "{{ bootstrap_user }}"
     mode: "0755"
   loop:
-    - "{{ ansible_env.HOME }}/bin"
-    - "{{ ansible_env.HOME }}/bin/{{ lmto_lsystem }}"
-    - "{{ ansible_env.HOME }}/lib"
-    - "{{ ansible_env.HOME }}/lib/{{ lmto_lsystem }}"
-    - "{{ ansible_env.HOME }}/lib/LMHELP"
+    - "{{ bootstrap_home }}/bin"
+    - "{{ bootstrap_home }}/bin/{{ lmto_lsystem }}"
+    - "{{ bootstrap_home }}/lib"
+    - "{{ bootstrap_home }}/lib/{{ lmto_lsystem }}"
+    - "{{ bootstrap_home }}/lib/LMHELP"
 
 - name: Locate Intel Fortran offline installer
   ansible.builtin.find:
@@ -84,11 +94,11 @@
 
 - name: Ensure ~/.profile sources Intel setvars (as on working machine)
   ansible.builtin.lineinfile:
-    path: "{{ ansible_env.HOME }}/.profile"
+    path: "{{ bootstrap_home }}/.profile"
     line: 'source {{ lmto_intel_setvars }}'
     regexp: '^\s*(source|\.)\s+.*/setvars\.sh'
     create: true
-    owner: "{{ ansible_user_id }}"
+    owner: "{{ bootstrap_user }}"
   become: false
   when: lmto_ensure_user_profile_setvars | bool
 
@@ -192,7 +202,7 @@
       . "{{ lmto_intel_setvars }}" >/dev/null 2>&1 || true
     fi
     export LSYSTEM="{{ lmto_lsystem }}"
-    export HOME="{{ ansible_env.HOME }}"
+    export HOME="{{ bootstrap_home }}"
     # Answers: not development; makefile name; default BLAS/LAPACK
     printf '%s\n' '' '{{ lmto_makefile }}' '' | ./configure
   args:
@@ -202,7 +212,7 @@
   become: false
   environment:
     LSYSTEM: "{{ lmto_lsystem }}"
-    HOME: "{{ ansible_env.HOME }}"
+    HOME: "{{ bootstrap_home }}"
   when: lmto_build | bool
 
 - name: Enable -xHost in localoptions FFLAGS (match working machine)
@@ -231,30 +241,30 @@
   become: false
   environment:
     LSYSTEM: "{{ lmto_lsystem }}"
-    HOME: "{{ ansible_env.HOME }}"
+    HOME: "{{ bootstrap_home }}"
   when: lmto_build | bool
 
 - name: Copy prebuilt Xscr into SYSBIN if present and missing
   ansible.builtin.copy:
     src: "{{ lmto_src_dir }}/SCRIPT/Xscr"
-    dest: "{{ ansible_env.HOME }}/bin/{{ lmto_lsystem }}/Xscr"
+    dest: "{{ bootstrap_home }}/bin/{{ lmto_lsystem }}/Xscr"
     mode: "0755"
     remote_src: true
   become: false
   when:
     - lmto_build | bool
     - (lmto_src_dir + '/SCRIPT/Xscr') is exists
-    - not ((ansible_env.HOME + '/bin/' + lmto_lsystem + '/Xscr') is exists)
+    - not ((bootstrap_home + '/bin/' + lmto_lsystem + '/Xscr') is exists)
   failed_when: false
 
 - name: Verify lmto binary is available
   ansible.builtin.stat:
-    path: "{{ ansible_env.HOME }}/bin/{{ lmto_lsystem }}/lmto"
+    path: "{{ bootstrap_home }}/bin/{{ lmto_lsystem }}/lmto"
   register: lmto_lmto_bin
 
 - name: Verify lmt wrapper script is available
   ansible.builtin.stat:
-    path: "{{ ansible_env.HOME }}/bin/lmt"
+    path: "{{ bootstrap_home }}/bin/lmt"
   register: lmto_lmt_script
 
 - name: Report LMTO install result
@@ -262,6 +272,6 @@
     msg: >-
       LMTO setup finished. makefile={{ lmto_makefile }};
       lmto binary exists={{ lmto_lmto_bin.stat.exists | default(false) }}
-      at {{ ansible_env.HOME }}/bin/{{ lmto_lsystem }}/lmto;
+      at {{ bootstrap_home }}/bin/{{ lmto_lsystem }}/lmto;
       lmt script exists={{ lmto_lmt_script.stat.exists | default(false) }}.
       Open a new shell (or source {{ lmto_profile_script }}) so PATH/setvars apply.
