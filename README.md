@@ -1,6 +1,7 @@
 # ubuntu-bootstrap
 
-Ansible playbooks to set up a local Ubuntu workstation (apt, snaps, flatpaks, local `.deb`s, optional lab tools).
+Ansible playbooks to set up a local Ubuntu workstation (apt, snaps, flatpaks,
+local `.deb`s, and optional tools).
 
 ## Quick start
 
@@ -9,7 +10,30 @@ sudo apt update
 sudo apt install -y ansible
 ansible-galaxy collection install community.general
 
+# optional: download Cursor / VeraCrypt .debs into files/ (see below)
+
+ansible-playbook playbook.yml --ask-become-pass --check --diff   # dry-run
 ansible-playbook playbook.yml --ask-become-pass
+```
+
+## Tags
+
+| Tag | What it installs |
+|-----|------------------|
+| `common` | Shared apt packages (includes `gh`) |
+| `lab` | NFS, gv, emacs, terminals, etc. (`enable_lab_packages`) |
+| `snaps` | VS Code, Telegram, Claude Code |
+| `flatpak` | Flathub + Newelle, Flatseal |
+| `debs` | Cursor, VeraCrypt from `files/` |
+| `claude` | Claude Desktop apt repo + package |
+| `chrome` | Google Chrome apt repo + package |
+| `ollama` | Ollama tarball + systemd service |
+
+Examples:
+
+```bash
+ansible-playbook playbook.yml --ask-become-pass --tags common,snaps
+ansible-playbook playbook.yml --ask-become-pass --skip-tags ollama,lab
 ```
 
 ## Layout
@@ -18,12 +42,30 @@ ansible-playbook playbook.yml --ask-become-pass
 |------|---------|
 | `ansible.cfg` | Defaults (local inventory, become) |
 | `inventory.ini` | `localhost` with local connection |
-| `playbook.yml` | Main bootstrap play |
-| `group_vars/all.yml` | Package lists and toggles |
-| `roles/` | Roles (added later) |
-| `files/` | Local installers / `.deb`s (added later) |
+| `playbook.yml` | Bootstrap tasks |
+| `group_vars/all.yml` | Machine-specific lists and toggles |
+| `files/` | Local `.deb`s (not committed) |
+| `roles/` | Reserved for later (e.g. Intel + NFS lab) |
+
+## Local `.deb` downloads
+
+Place installers under `files/` (details in [`files/README.md`](files/README.md)):
+
+| Package | Where to get it |
+|---------|-----------------|
+| **VeraCrypt** | https://veracrypt.io/en/Downloads.html — or direct amd64 builds from [GitHub 1.26.29](https://github.com/veracrypt/VeraCrypt/releases/tag/VeraCrypt_1.26.29) (pick your Ubuntu release, e.g. [26.04](https://github.com/veracrypt/VeraCrypt/releases/download/VeraCrypt_1.26.29/veracrypt-1.26.29-Ubuntu-26.04-amd64.deb) / [24.04](https://github.com/veracrypt/VeraCrypt/releases/download/VeraCrypt_1.26.29/veracrypt-1.26.29-Ubuntu-24.04-amd64.deb)) |
+| **Cursor** | https://cursor.com/download — choose the Linux **DEB** (latest version every time) |
+
+```bash
+# VeraCrypt example (Ubuntu 26.04 amd64)
+curl -fLO --output-dir files \
+  https://github.com/veracrypt/VeraCrypt/releases/download/VeraCrypt_1.26.29/veracrypt-1.26.29-Ubuntu-26.04-amd64.deb
+
+# Cursor: download the .deb from the site, then:
+cp ~/Downloads/cursor_*.deb files/
+```
 
 ## Branches
 
-- `main` — stable
+- `main` — stable scaffold
 - `develop` — work in progress

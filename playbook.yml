@@ -1,15 +1,180 @@
 ---
-# Local Ubuntu workstation bootstrap (placeholder).
-# Add install tasks in the next commit.
+# Local Ubuntu workstation bootstrap.
+# Tags: common, snaps, flatpak, debs, claude, chrome, ollama, lab
 
 - name: Bootstrap local Ubuntu
   hosts: local
   become: true
   gather_facts: true
 
+  pre_tasks:
+    - name: Build apt package list from enabled profiles
+      ansible.builtin.set_fact:
+        apt_packages: "{{ apt_packages_common + (apt_packages_lab if enable_lab_packages | bool else []) }}"
+      tags: [always]
+
   tasks:
-    - name: Placeholder — no packages configured yet
+    - name: Install apt packages
+      ansible.builtin.apt:
+        name: "{{ apt_packages }}"
+        state: present
+        update_cache: true
+      tags: [common, lab]
+
+    - name: Ensure Flathub remote exists
+      community.general.flatpak_remote:
+        name: "{{ flatpak_remote_name }}"
+        flatpakrepo_url: "{{ flatpak_remote_url }}"
+        state: present
+      tags: [flatpak]
+
+    - name: Install Flatpak applications
+      community.general.flatpak:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ flatpaks }}"
+      tags: [flatpak]
+
+    - name: Install snap packages
+      community.general.snap:
+        name: "{{ item.name }}"
+        classic: "{{ item.classic | default(false) }}"
+        state: present
+      loop: "{{ snaps }}"
+      tags: [snaps]
+
+    - name: Locate .deb packages in files/
+      ansible.builtin.find:
+        paths: "{{ playbook_dir }}/files"
+        patterns: "{{ item.pattern }}"
+        file_type: file
+      loop: "{{ debs }}"
+      register: deb_finds
+      tags: [debs]
+
+    - name: Install newest matching .deb for each package
+      ansible.builtin.apt:
+        deb: "{{ (item.files | sort(attribute='mtime') | last).path }}"
+        state: present
+      loop: "{{ deb_finds.results }}"
+      when: item.files | length > 0
+      loop_control:
+        label: "{{ item.item.name }} -> {{ (item.files | sort(attribute='mtime') | last).path | basename }}"
+      tags: [debs]
+
+    - name: Warn when no matching .deb found
       ansible.builtin.debug:
-        msg: >-
-          Edit group_vars/all.yml and add tasks (or roles) to install
-          apt/snap/flatpak/.deb packages.
+        msg: "Skipping {{ item.item.name }} — no file matching files/{{ item.item.pattern }}"
+      loop: "{{ deb_finds.results }}"
+      when: item.files | length == 0
+      loop_control:
+        label: "{{ item.item.name }}"
+      tags: [debs]
+
+    - name: Install Claude Desktop apt key
+      ansible.builtin.get_url:
+        url: "{{ claude_desktop_key_url }}"
+        dest: "{{ claude_desktop_keyring }}"
+        mode: "0644"
+      when: install_claude_desktop | bool
+      tags: [claude]
+
+    - name: Add Claude Desktop apt repository
+      ansible.builtin.copy:
+        dest: "{{ claude_desktop_list }}"
+        mode: "0644"
+        content: "{{ claude_desktop_repo }}\n"
+      when: install_claude_desktop | bool
+      tags: [claude]
+
+    - name: Install Claude Desktop
+      ansible.builtin.apt:
+        name: claude-desktop
+        state: present
+        update_cache: true
+      when: install_claude_desktop | bool
+      tags: [claude]
+
+    - name: Install Google Chrome signing key
+      ansible.builtin.shell: |
+        set -euo pipefail
+        curl -fsSL "{{ chrome_key_url }}" \
+          | gpg --dearmor -o "{{ chrome_keyring }}"
+      args:
+        creates: "{{ chrome_keyring }}"
+      when: install_google_chrome | bool
+      tags: [chrome]
+
+    - name: Add Google Chrome apt repository
+      ansible.builtin.copy:
+        dest: "{{ chrome_list }}"
+        mode: "0644"
+        content: "{{ chrome_repo }}\n"
+      when: install_google_chrome | bool
+      tags: [chrome]
+
+    - name: Install Google Chrome
+      ansible.builtin.apt:
+        name: google-chrome-stable
+        state: present
+        update_cache: true
+      when: install_google_chrome | bool
+      tags: [chrome]
+
+    - name: Ensure ollama system user exists
+      ansible.builtin.user:
+        name: ollama
+        system: true
+        shell: /usr/sbin/nologin
+        home: /usr/share/ollama
+        create_home: true
+      when: install_ollama | bool
+      tags: [ollama]
+
+    - name: Download and extract Ollama
+      ansible.builtin.unarchive:
+        src: "{{ ollama_tarball_url }}"
+        dest: /usr
+        remote_src: true
+        extra_opts: [--zstd]
+        creates: /usr/bin/ollama
+      when: install_ollama | bool
+      tags: [ollama]
+
+    - name: Install Ollama systemd unit
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/ollama.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Ollama Service
+          After=network-online.target
+
+          [Service]
+          ExecStart=/usr/bin/ollama serve
+          User=ollama
+          Group=ollama
+          Restart=always
+          RestartSec=3
+
+          [Install]
+          WantedBy=default.target
+      when: install_ollama | bool
+      tags: [ollama]
+      notify: Restart ollama
+
+    - name: Enable and start Ollama
+      ansible.builtin.systemd:
+        name: ollama
+        enabled: true
+        state: started
+        daemon_reload: true
+      when: install_ollama | bool
+      tags: [ollama]
+
+  handlers:
+    - name: Restart ollama
+      ansible.builtin.systemd:
+        name: ollama
+        state: restarted
+        daemon_reload: true

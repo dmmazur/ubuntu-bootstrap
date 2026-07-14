@@ -1,14 +1,81 @@
 ---
-# Package lists and install options for local Ubuntu setup.
-# Fill in on the next commit.
+# Package inventory for local Ubuntu bootstrap.
+# Review before first run. Toggle optional blocks with the flags below.
 
-apt_packages: []
+# --- toggles ---
+install_claude_desktop: true
+install_google_chrome: true
+install_ollama: true
+# Lab/scientific extras (NFS, PostScript viewer, terminals, etc.)
+enable_lab_packages: true
 
-snaps: []
+# --- apt: baseline desktop/dev tools ---
+apt_packages_common:
+  - apt-file
+  - apt-transport-https
+  - curl
+  - flatpak
+  - gedit
+  - gh
+  - git
+  - make
+  - mc
+  - python3-pip
+  - software-properties-common
+  - wget
 
-flatpaks: []
+# --- apt: lab / scientific extras ---
+apt_packages_lab:
+  - emacs
+  - gv
+  - kitty
+  - nfs-common
+  - ntfs-3g
+  - openssh-server
+  - texinfo
+  - tilix
+  - traceroute
 
-debs: []
+# --- snaps ---
+# VS Code via snap (classic confinement)
+snaps:
+  - name: code
+    classic: true
+  - name: telegram-desktop
+  - name: claude-code
 
-install_claude_desktop: false
-install_ollama: false
+# --- flatpak ---
+flatpak_remote_name: flathub
+flatpak_remote_url: https://flathub.org/repo/flathub.flatpakrepo
+
+flatpaks:
+  - io.github.qwersyk.Newelle
+  - com.github.tchx84.Flatseal
+
+# --- local .deb installers ---
+# Drop versioned downloads into files/; globs match without renaming.
+# If several match, the newest by mtime is installed. *.deb is gitignored.
+debs:
+  - name: veracrypt
+    pattern: veracrypt*.deb
+  - name: cursor
+    pattern: cursor*.deb
+
+# --- Claude Desktop (custom apt repo) ---
+claude_desktop_key_url: https://downloads.claude.ai/claude-desktop/key.asc
+claude_desktop_keyring: /usr/share/keyrings/claude-desktop-archive-keyring.asc
+claude_desktop_list: /etc/apt/sources.list.d/claude-desktop.list
+claude_desktop_repo: >-
+  deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/claude-desktop-archive-keyring.asc]
+  https://downloads.claude.ai/claude-desktop/apt/stable stable main
+
+# --- Google Chrome ---
+chrome_key_url: https://dl.google.com/linux/linux_signing_key.pub
+chrome_keyring: /usr/share/keyrings/google-chrome.gpg
+chrome_list: /etc/apt/sources.list.d/google-chrome.list
+chrome_repo: >-
+  deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg]
+  https://dl.google.com/linux/chrome/deb/ stable main
+
+# --- Ollama (official linux amd64 tarball into /usr) ---
+ollama_tarball_url: https://ollama.com/download/ollama-linux-amd64.tar.zst

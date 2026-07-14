@@ -9,3 +9,4 @@ venv/
 files/*.deb
 files/*.sh
 !files/.gitkeep
+!files/README.md
