@@ -1,0 +1,19 @@
+# LMTO + Intel oneAPI environment (ubuntu-bootstrap)
+
+# Intel compilers / MKL
+if [ -f "{{ lmto_intel_setvars }}" ]; then
+  # shellcheck disable=SC1091
+  . "{{ lmto_intel_setvars }}" >/dev/null 2>&1 || true
+fi
+
+# LMTO scripts (~/bin) and architecture-specific binaries (~/bin/$LSYSTEM)
+export LSYSTEM="${LSYSTEM:-{{ lmto_lsystem }}}"
+case ":${PATH}:" in
+  *":${HOME}/bin:"*) ;;
+  *) PATH="${HOME}/bin:${PATH}" ;;
+esac
+case ":${PATH}:" in
+  *":${HOME}/bin/${LSYSTEM}:"*) ;;
+  *) PATH="${HOME}/bin/${LSYSTEM}:${PATH}" ;;
+esac
+export PATH

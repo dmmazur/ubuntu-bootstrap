@@ -1,6 +1,6 @@
 ---
 # Local Ubuntu workstation bootstrap.
-# Tags: common, snaps, flatpak, debs, claude, chrome, ollama, lab
+# Tags: common, snaps, flatpak, debs, claude, chrome, ollama, lab, lmto
 
 - name: Bootstrap local Ubuntu
   hosts: local
@@ -171,6 +171,12 @@
         daemon_reload: true
       when: install_ollama | bool
       tags: [ollama]
+
+    - name: Install LMTO and prerequisites
+      ansible.builtin.include_role:
+        name: lmto
+      when: install_lmto | bool
+      tags: [lmto]
 
   handlers:
     - name: Restart ollama

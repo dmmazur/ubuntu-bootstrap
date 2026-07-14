@@ -1,0 +1,267 @@
+---
+# LMTO: prereqs → Intel from files/ → env → NFS → build from existing ~/src
+# Copy or link the LMTO tree into lmto_src_dir before running this role.
+# Run with: ansible-playbook playbook.yml --ask-become-pass --tags lmto
+
+- name: Install LMTO apt prerequisites
+  ansible.builtin.apt:
+    name: "{{ apt_packages_lmto }}"
+    state: present
+    update_cache: true
+
+- name: Create scratch directory for builds
+  ansible.builtin.file:
+    path: "{{ lmto_scratch_dir }}"
+    state: directory
+    mode: "{{ lmto_scratch_mode }}"
+
+- name: Create LMTO home bin and lib directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ ansible_user_id }}"
+    mode: "0755"
+  loop:
+    - "{{ ansible_env.HOME }}/bin"
+    - "{{ ansible_env.HOME }}/bin/{{ lmto_lsystem }}"
+    - "{{ ansible_env.HOME }}/lib"
+    - "{{ ansible_env.HOME }}/lib/{{ lmto_lsystem }}"
+    - "{{ ansible_env.HOME }}/lib/LMHELP"
+
+- name: Locate Intel Fortran offline installer
+  ansible.builtin.find:
+    paths: "{{ playbook_dir }}/files"
+    patterns: "{{ lmto_intel_fortran_pattern }}"
+    file_type: file
+  register: lmto_fortran_installers
+  when: lmto_install_intel | bool
+
+- name: Locate Intel oneMKL offline installer
+  ansible.builtin.find:
+    paths: "{{ playbook_dir }}/files"
+    patterns: "{{ lmto_intel_mkl_pattern }}"
+    file_type: file
+  register: lmto_mkl_installers
+  when: lmto_install_intel | bool
+
+- name: Install Intel Fortran compiler (silent)
+  ansible.builtin.shell: >
+    sh "{{ (lmto_fortran_installers.files | sort(attribute='mtime') | last).path }}"
+    {{ lmto_intel_silent_args }}
+  args:
+    creates: /opt/intel/oneapi/compiler
+  when:
+    - lmto_install_intel | bool
+    - lmto_fortran_installers.files | default([]) | length > 0
+
+- name: Install Intel oneMKL (silent)
+  ansible.builtin.shell: >
+    sh "{{ (lmto_mkl_installers.files | sort(attribute='mtime') | last).path }}"
+    {{ lmto_intel_silent_args }}
+  args:
+    creates: /opt/intel/oneapi/mkl
+  when:
+    - lmto_install_intel | bool
+    - lmto_mkl_installers.files | default([]) | length > 0
+
+- name: Warn when Intel installers are missing
+  ansible.builtin.debug:
+    msg: >-
+      No matching Intel offline installers in files/
+      (expected {{ lmto_intel_fortran_pattern }} and/or {{ lmto_intel_mkl_pattern }}).
+      See files/LMTO.md — build will fall back to gfortran if ifx is unavailable.
+  when:
+    - lmto_install_intel | bool
+    - (lmto_fortran_installers.files | default([]) | length == 0)
+      and (lmto_mkl_installers.files | default([]) | length == 0)
+    - not (lmto_intel_setvars is exists)
+
+- name: Install LMTO profile.d environment script
+  ansible.builtin.template:
+    src: lmto.sh.j2
+    dest: "{{ lmto_profile_script }}"
+    mode: "0644"
+
+- name: Ensure ~/.profile sources Intel setvars (as on working machine)
+  ansible.builtin.lineinfile:
+    path: "{{ ansible_env.HOME }}/.profile"
+    line: 'source {{ lmto_intel_setvars }}'
+    regexp: '^\s*(source|\.)\s+.*/setvars\.sh'
+    create: true
+    owner: "{{ ansible_user_id }}"
+  become: false
+  when: lmto_ensure_user_profile_setvars | bool
+
+- name: Ensure NFS mount point exists
+  ansible.builtin.file:
+    path: "{{ lmto_nfs_path }}"
+    state: directory
+    mode: "0755"
+  when: lmto_nfs_enable | bool
+
+- name: Add NFS entry to /etc/fstab
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    regexp: '^\s*{{ lmto_nfs_source | regex_escape }}\s+{{ lmto_nfs_path | regex_escape }}\s+'
+    line: >-
+      {{ lmto_nfs_source }} {{ lmto_nfs_path }} nfs {{ lmto_nfs_opts }} 0 0
+    state: present
+  when:
+    - lmto_nfs_enable | bool
+    - lmto_nfs_fstab | bool
+
+- name: Mount NFS share for LMTO data/binaries
+  ansible.builtin.command:
+    cmd: "mount {{ lmto_nfs_path }}"
+  args:
+    creates: "{{ lmto_nfs_path }}/."
+  register: lmto_nfs_mount
+  failed_when: false
+  when: lmto_nfs_enable | bool
+  changed_when: lmto_nfs_mount.rc == 0
+
+- name: Warn if NFS mount failed
+  ansible.builtin.debug:
+    msg: >-
+      NFS mount of {{ lmto_nfs_source }} -> {{ lmto_nfs_path }} failed
+      (rc={{ lmto_nfs_mount.rc | default('n/a') }}). Check network/credentials.
+  when:
+    - lmto_nfs_enable | bool
+    - lmto_nfs_mount.rc is defined
+    - lmto_nfs_mount.rc != 0
+
+- name: Create home convenience symlinks when targets exist
+  ansible.builtin.file:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    state: link
+    force: false
+  loop: "{{ lmto_home_symlinks }}"
+  when: item.src is exists
+  failed_when: false
+
+- name: Require LMTO source tree at lmto_src_dir
+  ansible.builtin.stat:
+    path: "{{ lmto_src_dir }}/configure"
+  register: lmto_configure_stat
+
+- name: Fail if LMTO source is missing
+  ansible.builtin.assert:
+    that:
+      - lmto_configure_stat.stat.exists
+      - lmto_configure_stat.stat.isreg or lmto_configure_stat.stat.islnk
+    fail_msg: >-
+      LMTO source not found at {{ lmto_src_dir }} (expected configure script).
+      Copy or symlink the tree from the other machine into {{ lmto_src_dir }}
+      before running --tags lmto. Intel installers go in files/ (see files/LMTO.md).
+  when: lmto_build | bool
+
+- name: Ensure configure script is executable
+  ansible.builtin.file:
+    path: "{{ lmto_src_dir }}/configure"
+    mode: "0755"
+  when: lmto_configure_stat.stat.exists
+
+- name: Detect Intel ifx availability (after setvars)
+  ansible.builtin.shell: |
+    set -e
+    if [ -f "{{ lmto_intel_setvars }}" ]; then
+      # shellcheck disable=SC1091
+      . "{{ lmto_intel_setvars }}" >/dev/null 2>&1 || true
+    fi
+    command -v ifx
+  args:
+    executable: /bin/bash
+  register: lmto_ifx_check
+  changed_when: false
+  failed_when: false
+
+- name: Choose LMTO makefile
+  ansible.builtin.set_fact:
+    lmto_makefile: "{{ lmto_makefile_intel if (lmto_ifx_check.rc | default(1) == 0) else lmto_makefile_gfortran }}"
+
+- name: Show selected LMTO makefile
+  ansible.builtin.debug:
+    msg: "Using MAK/{{ lmto_makefile }} (ifx rc={{ lmto_ifx_check.rc }})"
+
+- name: Configure LMTO non-interactively
+  ansible.builtin.shell: |
+    set -euo pipefail
+    if [ -f "{{ lmto_intel_setvars }}" ]; then
+      # shellcheck disable=SC1091
+      . "{{ lmto_intel_setvars }}" >/dev/null 2>&1 || true
+    fi
+    export LSYSTEM="{{ lmto_lsystem }}"
+    export HOME="{{ ansible_env.HOME }}"
+    # Answers: not development; makefile name; default BLAS/LAPACK
+    printf '%s\n' '' '{{ lmto_makefile }}' '' | ./configure
+  args:
+    chdir: "{{ lmto_src_dir }}"
+    executable: /bin/bash
+    creates: "{{ lmto_src_dir }}/OBJ/{{ lmto_lsystem }}/systemoptions"
+  become: false
+  environment:
+    LSYSTEM: "{{ lmto_lsystem }}"
+    HOME: "{{ ansible_env.HOME }}"
+  when: lmto_build | bool
+
+- name: Enable -xHost in localoptions FFLAGS (match working machine)
+  ansible.builtin.replace:
+    path: "{{ lmto_src_dir }}/OBJ/{{ lmto_lsystem }}/localoptions"
+    regexp: 'fp-model=fast(?! -xHost)'
+    replace: 'fp-model=fast -xHost'
+  become: false
+  when:
+    - lmto_build | bool
+    - lmto_enable_xhost | bool
+    - (lmto_src_dir + '/OBJ/' + lmto_lsystem + '/localoptions') is exists
+
+- name: Build LMTO (make)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    if [ -f "{{ lmto_intel_setvars }}" ]; then
+      # shellcheck disable=SC1091
+      . "{{ lmto_intel_setvars }}" >/dev/null 2>&1 || true
+    fi
+    export LSYSTEM="{{ lmto_lsystem }}"
+    make
+  args:
+    chdir: "{{ lmto_src_dir }}"
+    executable: /bin/bash
+  become: false
+  environment:
+    LSYSTEM: "{{ lmto_lsystem }}"
+    HOME: "{{ ansible_env.HOME }}"
+  when: lmto_build | bool
+
+- name: Copy prebuilt Xscr into SYSBIN if present and missing
+  ansible.builtin.copy:
+    src: "{{ lmto_src_dir }}/SCRIPT/Xscr"
+    dest: "{{ ansible_env.HOME }}/bin/{{ lmto_lsystem }}/Xscr"
+    mode: "0755"
+    remote_src: true
+  become: false
+  when:
+    - lmto_build | bool
+    - (lmto_src_dir + '/SCRIPT/Xscr') is exists
+    - not ((ansible_env.HOME + '/bin/' + lmto_lsystem + '/Xscr') is exists)
+  failed_when: false
+
+- name: Verify lmto binary is available
+  ansible.builtin.stat:
+    path: "{{ ansible_env.HOME }}/bin/{{ lmto_lsystem }}/lmto"
+  register: lmto_lmto_bin
+
+- name: Verify lmt wrapper script is available
+  ansible.builtin.stat:
+    path: "{{ ansible_env.HOME }}/bin/lmt"
+  register: lmto_lmt_script
+
+- name: Report LMTO install result
+  ansible.builtin.debug:
+    msg: >-
+      LMTO setup finished. makefile={{ lmto_makefile }};
+      lmto binary exists={{ lmto_lmto_bin.stat.exists | default(false) }}
+      at {{ ansible_env.HOME }}/bin/{{ lmto_lsystem }}/lmto;
+      lmt script exists={{ lmto_lmt_script.stat.exists | default(false) }}.
+      Open a new shell (or source {{ lmto_profile_script }}) so PATH/setvars apply.

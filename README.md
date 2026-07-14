@@ -28,12 +28,14 @@ ansible-playbook playbook.yml --ask-become-pass
 | `claude` | Claude Desktop apt repo + package |
 | `chrome` | Google Chrome apt repo + package |
 | `ollama` | Ollama tarball + systemd service |
+| `lmto` | LMTO stack: apt deps, Intel oneAPI, env, NFS, configure/make |
 
 Examples:
 
 ```bash
 ansible-playbook playbook.yml --ask-become-pass --tags common,snaps
 ansible-playbook playbook.yml --ask-become-pass --skip-tags ollama,lab
+ansible-playbook playbook.yml --ask-become-pass --tags lmto
 ```
 
 ## Layout
@@ -43,9 +45,23 @@ ansible-playbook playbook.yml --ask-become-pass --skip-tags ollama,lab
 | `ansible.cfg` | Defaults (local inventory, become) |
 | `inventory.ini` | `localhost` with local connection |
 | `playbook.yml` | Bootstrap tasks |
-| `group_vars/all.yml` | Machine-specific lists and toggles |
-| `files/` | Local `.deb`s (not committed) |
-| `roles/` | Reserved for later (e.g. Intel + NFS lab) |
+| `group_vars/all.yml` | Package lists, toggles, LMTO options |
+| `files/` | Local `.deb`s / Intel offline installers (not committed) |
+| `roles/lmto/` | LMTO install role (prereqs → Intel → env → build) |
+
+## LMTO
+
+Separate step (`install_lmto: true`, tag `lmto`). See [`files/LMTO.md`](files/LMTO.md).
+
+- **Source:** already at `~/src` (copy, rsync, or symlink from the other machine)
+- **Intel:** offline installers in `files/` (`*fortran*offline.sh`, `*onemkl*offline.sh`)
+- Then: apt deps → oneAPI → env → optional NFS → `./configure` + `make` in `~/src`
+
+```bash
+ansible-playbook playbook.yml --ask-become-pass --tags lmto
+
+# Prep only (no compile): set lmto_build: false in group_vars
+```
 
 ## Local `.deb` downloads
 

@@ -8,6 +8,8 @@ install_google_chrome: true
 install_ollama: true
 # Lab/scientific extras (NFS, PostScript viewer, terminals, etc.)
 enable_lab_packages: true
+# Full LMTO stack: apt deps, Intel oneAPI (if installers present), env, build
+install_lmto: true
 
 # --- apt: baseline desktop/dev tools ---
 apt_packages_common:
@@ -35,6 +37,21 @@ apt_packages_lab:
   - texinfo
   - tilix
   - traceroute
+
+# --- apt: LMTO build/runtime prerequisites ---
+# (subset overlaps lab/common; safe to install again — apt is idempotent)
+apt_packages_lmto:
+  - build-essential
+  - curl
+  - gfortran
+  - git
+  - gv
+  - libx11-6
+  - libxext6
+  - make
+  - nfs-common
+  - texinfo
+  - wget
 
 # --- snaps ---
 # VS Code via snap (classic confinement)
@@ -79,3 +96,59 @@ chrome_repo: >-
 
 # --- Ollama (official linux amd64 tarball into /usr) ---
 ollama_tarball_url: https://ollama.com/download/ollama-linux-amd64.tar.zst
+
+# =============================================================================
+# LMTO (separate step — tag: lmto)
+# Reference: ~/Downloads/lmto-machine-reference.txt (working workstation dump)
+# =============================================================================
+
+# Source tree must already exist (copy/rsync/symlink from the other machine).
+# Expected layout matches working box: ~/src with configure, MAK/, LMTO/, …
+lmto_src_dir: "{{ ansible_env.HOME }}/src"
+
+# LSYSTEM selects ~/bin/$LSYSTEM and ~/lib/$LSYSTEM (see Readme.1st)
+lmto_lsystem: Linux
+
+# Working machine: SYSMAK=.../MAK/ifx_mkl.mak
+lmto_makefile_intel: ifx_mkl.mak
+lmto_makefile_gfortran: gfortran.mak
+
+# Match localoptions FFLAGS (... -xHost) from working machine
+lmto_enable_xhost: true
+
+# Intel oneAPI offline installers in files/ (gitignored *.sh)
+# Working machine had 2025.1 ifx; offline .sh must be re-downloaded if missing
+#   intel-fortran-compiler-2025.1.*.offline.sh
+#   intel-onemkl-2025.1.*.offline.sh
+lmto_install_intel: true
+lmto_intel_fortran_pattern: "*fortran*offline.sh"
+lmto_intel_mkl_pattern: "*onemkl*offline.sh"
+lmto_intel_setvars: /opt/intel/oneapi/setvars.sh
+lmto_intel_silent_args: "-a --silent --eula accept"
+
+# World-writable build scratch (as used in prior workstation setup)
+lmto_scratch_dir: /scratch
+lmto_scratch_mode: "0777"
+
+# Optional institute NFS — working fstab used defaults,soft,vers=4.2,_netdev
+lmto_nfs_enable: false
+lmto_nfs_source: "pam254:/dep24"
+lmto_nfs_path: /dep24
+lmto_nfs_opts: "defaults,soft,vers=4.2,_netdev"
+lmto_nfs_fstab: true
+
+# Convenience symlinks into the home directory (created only if targets exist)
+lmto_home_symlinks:
+  - src: /dep24
+    dest: "{{ ansible_env.HOME }}/dep24"
+  - src: /dep24/dmazur/R
+    dest: "{{ ansible_env.HOME }}/R_dep24"
+  - src: /dep24/dmazur/TeX
+    dest: "{{ ansible_env.HOME }}/TeX_dep24"
+
+# Shell environment: profile.d + ensure ~/.profile sources setvars (as on working box)
+lmto_profile_script: /etc/profile.d/lmto.sh
+lmto_ensure_user_profile_setvars: true
+
+# Run ./configure + make (set false to only prepare deps/env)
+lmto_build: true
