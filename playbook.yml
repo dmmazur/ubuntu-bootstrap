@@ -1,0 +1,15 @@
+---
+# Local Ubuntu workstation bootstrap (placeholder).
+# Add install tasks in the next commit.
+
+- name: Bootstrap local Ubuntu
+  hosts: local
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Placeholder — no packages configured yet
+      ansible.builtin.debug:
+        msg: >-
+          Edit group_vars/all.yml and add tasks (or roles) to install
+          apt/snap/flatpak/.deb packages.

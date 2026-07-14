@@ -1,0 +1,14 @@
+---
+# Package lists and install options for local Ubuntu setup.
+# Fill in on the next commit.
+
+apt_packages: []
+
+snaps: []
+
+flatpaks: []
+
+debs: []
+
+install_claude_desktop: false
+install_ollama: false

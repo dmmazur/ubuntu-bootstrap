@@ -1,0 +1,11 @@
+*.retry
+.vault_pass
+*.vault
+.DS_Store
+__pycache__/
+*.pyc
+.venv/
+venv/
+files/*.deb
+files/*.sh
+!files/.gitkeep
