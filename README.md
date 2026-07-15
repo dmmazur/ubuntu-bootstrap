@@ -3,25 +3,56 @@
 Ansible playbooks to set up a local Ubuntu workstation (apt, snaps,
 local `.deb`s, and optional tools).
 
-## Quick start
+## Quick start (fresh Ubuntu)
+
+```bash
+git clone https://github.com/dmmazur/ubuntu-bootstrap.git
+cd ubuntu-bootstrap
+
+# Full install (Ansible + all enabled sections)
+./bootstrap.sh
+
+# Or one section at a time:
+./scripts/bootstrap-common.sh
+./scripts/bootstrap-snaps.sh
+./scripts/bootstrap-debs.sh
+./scripts/bootstrap-lmto.sh
+```
+
+Optional before running:
+
+- Cursor / VeraCrypt `.deb` files in `files/` (see below)
+- LMTO source tree at `~/src` (see [`files/LMTO.md`](files/LMTO.md))
+
+Verbose Ansible output: `BOOTSTRAP_VERBOSE=1 ./bootstrap.sh`
+
+### Manual ansible-playbook (alternative)
 
 ```bash
 sudo apt update
 sudo apt install -y ansible
 ansible-galaxy collection install community.general
 
-# optional: download Cursor / VeraCrypt .debs into files/ (see below)
-
-# Prefer this if become/password prompts time out on this machine:
-sudo --preserve-env=HOME \
-  ansible-playbook playbook.yml --tags common -e ansible_become=false
-
-# More Ansible detail:
 sudo --preserve-env=HOME \
   ansible-playbook playbook.yml --tags common -e ansible_become=false -v
 ```
 
 Section banners (`>>> COMMON`, …) and per-package task names show progress.
+
+### Install scripts
+
+| Script | Section |
+|--------|---------|
+| `./bootstrap.sh` | Everything (enabled in `group_vars/all.yml`) |
+| `./scripts/bootstrap-common.sh` | Common apt packages |
+| `./scripts/bootstrap-lab.sh` | Lab apt packages |
+| `./scripts/bootstrap-snaps.sh` | Snaps |
+| `./scripts/bootstrap-debs.sh` | Cursor, VeraCrypt `.debs` |
+| `./scripts/bootstrap-claude.sh` | Claude Desktop |
+| `./scripts/bootstrap-chrome.sh` | Google Chrome |
+| `./scripts/bootstrap-lmto.sh` | LMTO + Intel apt |
+| `./scripts/bootstrap-flatpak.sh` | Flatpak (off by default) |
+| `./scripts/bootstrap-ollama.sh` | Ollama (off by default) |
 
 ## Tags
 
@@ -40,9 +71,9 @@ Section banners (`>>> COMMON`, …) and per-package task names show progress.
 Examples:
 
 ```bash
-ansible-playbook playbook.yml --ask-become-pass --tags common,snaps
-ansible-playbook playbook.yml --ask-become-pass --skip-tags ollama,lab
-ansible-playbook playbook.yml --ask-become-pass --tags lmto
+./scripts/bootstrap-common.sh
+./scripts/bootstrap-common.sh --check --diff   # dry-run (passed to ansible-playbook)
+BOOTSTRAP_VERBOSE=1 ./scripts/bootstrap-snaps.sh
 ```
 
 ## Layout
