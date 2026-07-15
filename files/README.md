@@ -9,7 +9,7 @@ If several files match a pattern, the newest (by modification time) is installed
 
 `*.deb` files are gitignored so large binaries are not committed.
 
-For Intel oneAPI / LMTO offline installers and how to supply `~/src`, see [`LMTO.md`](LMTO.md).
+For Intel oneAPI (Fortran + MKL via apt) and how to supply `~/src`, see [`LMTO.md`](LMTO.md).
 
 ## Download links
 

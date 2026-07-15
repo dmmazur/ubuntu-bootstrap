@@ -119,15 +119,25 @@ lmto_makefile_gfortran: gfortran.mak
 # Match localoptions FFLAGS (... -xHost) from working machine
 lmto_enable_xhost: true
 
-# Intel oneAPI offline installers in files/ (gitignored *.sh)
-# Working machine had 2025.1 ifx; offline .sh must be re-downloaded if missing
-#   intel-fortran-compiler-2025.1.*.offline.sh
-#   intel-onemkl-2025.1.*.offline.sh
+# Intel oneAPI — Fortran + MKL via apt (same repo as Intel download pages)
 lmto_install_intel: true
-lmto_intel_fortran_pattern: "*fortran*offline.sh"
-lmto_intel_mkl_pattern: "*onemkl*offline.sh"
+lmto_install_intel_fortran_apt: true
+lmto_install_intel_mkl_apt: true
+lmto_install_intel_fortran_offline: false
+lmto_install_intel_mkl_offline: false
+lmto_intel_fortran_package: intel-oneapi-compiler-fortran
+# devel: headers/libs for compiling LMTO with ifx_mkl.mak (-qmkl)
+lmto_intel_mkl_package: intel-oneapi-mkl-devel
+
+# Intel apt repository (https://apt.repos.intel.com/oneapi)
+intel_oneapi_key_url: https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
+intel_oneapi_keyring: /usr/share/keyrings/oneapi-archive-keyring.gpg
+intel_oneapi_list: /etc/apt/sources.list.d/oneAPI.list
+intel_oneapi_repo: >-
+  deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg]
+  https://apt.repos.intel.com/oneapi all main
+
 lmto_intel_setvars: /opt/intel/oneapi/setvars.sh
-lmto_intel_silent_args: "-a --silent --eula accept"
 
 # World-writable build scratch (as used in prior workstation setup)
 lmto_scratch_dir: /scratch

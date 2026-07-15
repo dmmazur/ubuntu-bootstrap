@@ -1,13 +1,14 @@
 ---
-# LMTO: prereqs → Intel from files/ → env → NFS → build from existing ~/src
+# LMTO: prereqs → Intel apt (Fortran + MKL) → env → NFS → build
 # Copy or link the LMTO tree into lmto_src_dir before running this role.
-# Run with: ansible-playbook playbook.yml --ask-become-pass --tags lmto
 
 - name: ">>> LMTO role start — apt deps, Intel, env, optional NFS, build"
   ansible.builtin.debug:
     msg:
       src: "{{ lmto_src_dir }}"
       intel: "{{ lmto_install_intel }}"
+      fortran_apt: "{{ lmto_install_intel_fortran_apt }}"
+      mkl_apt: "{{ lmto_install_intel_mkl_apt }}"
       nfs: "{{ lmto_nfs_enable }}"
       build: "{{ lmto_build }}"
 
@@ -38,53 +39,43 @@
     - "{{ bootstrap_home }}/lib/{{ lmto_lsystem }}"
     - "{{ bootstrap_home }}/lib/LMHELP"
 
-- name: Locate Intel Fortran offline installer
-  ansible.builtin.find:
-    paths: "{{ playbook_dir }}/files"
-    patterns: "{{ lmto_intel_fortran_pattern }}"
-    file_type: file
-  register: lmto_fortran_installers
-  when: lmto_install_intel | bool
-
-- name: Locate Intel oneMKL offline installer
-  ansible.builtin.find:
-    paths: "{{ playbook_dir }}/files"
-    patterns: "{{ lmto_intel_mkl_pattern }}"
-    file_type: file
-  register: lmto_mkl_installers
-  when: lmto_install_intel | bool
-
-- name: Install Intel Fortran compiler (silent)
-  ansible.builtin.shell: >
-    sh "{{ (lmto_fortran_installers.files | sort(attribute='mtime') | last).path }}"
-    {{ lmto_intel_silent_args }}
+- name: ">>> INTEL — add oneAPI apt repository"
+  ansible.builtin.shell: |
+    set -euo pipefail
+    curl -fsSL "{{ intel_oneapi_key_url }}" \
+      | gpg --dearmor -o "{{ intel_oneapi_keyring }}"
   args:
-    creates: /opt/intel/oneapi/compiler
+    creates: "{{ intel_oneapi_keyring }}"
   when:
     - lmto_install_intel | bool
-    - lmto_fortran_installers.files | default([]) | length > 0
+    - lmto_install_intel_fortran_apt | bool or lmto_install_intel_mkl_apt | bool
 
-- name: Install Intel oneMKL (silent)
-  ansible.builtin.shell: >
-    sh "{{ (lmto_mkl_installers.files | sort(attribute='mtime') | last).path }}"
-    {{ lmto_intel_silent_args }}
-  args:
-    creates: /opt/intel/oneapi/mkl
+- name: Add Intel oneAPI apt source
+  ansible.builtin.copy:
+    dest: "{{ intel_oneapi_list }}"
+    mode: "0644"
+    content: "{{ intel_oneapi_repo }}\n"
   when:
     - lmto_install_intel | bool
-    - lmto_mkl_installers.files | default([]) | length > 0
+    - lmto_install_intel_fortran_apt | bool or lmto_install_intel_mkl_apt | bool
 
-- name: Warn when Intel installers are missing
-  ansible.builtin.debug:
-    msg: >-
-      No matching Intel offline installers in files/
-      (expected {{ lmto_intel_fortran_pattern }} and/or {{ lmto_intel_mkl_pattern }}).
-      See files/LMTO.md — build will fall back to gfortran if ifx is unavailable.
+- name: ">>> INTEL — install Fortran compiler (apt)"
+  ansible.builtin.apt:
+    name: "{{ lmto_intel_fortran_package }}"
+    state: present
+    update_cache: true
   when:
     - lmto_install_intel | bool
-    - (lmto_fortran_installers.files | default([]) | length == 0)
-      and (lmto_mkl_installers.files | default([]) | length == 0)
-    - not (lmto_intel_setvars is exists)
+    - lmto_install_intel_fortran_apt | bool
+
+- name: ">>> INTEL — install oneMKL (apt)"
+  ansible.builtin.apt:
+    name: "{{ lmto_intel_mkl_package }}"
+    state: present
+    update_cache: true
+  when:
+    - lmto_install_intel | bool
+    - lmto_install_intel_mkl_apt | bool
 
 - name: Install LMTO profile.d environment script
   ansible.builtin.template:

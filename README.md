@@ -53,19 +53,20 @@ ansible-playbook playbook.yml --ask-become-pass --tags lmto
 | `inventory.ini` | `localhost` with local connection |
 | `playbook.yml` | Bootstrap tasks |
 | `group_vars/all.yml` | Package lists, toggles, LMTO options |
-| `files/` | Local `.deb`s / Intel offline installers (not committed) |
-| `roles/lmto/` | LMTO install role (prereqs → Intel → env → build) |
+| `files/` | Local `.deb`s (not committed) |
+| `roles/lmto/` | LMTO install role (prereqs → Intel apt → env → build) |
 
 ## LMTO
 
 Separate step (`install_lmto: true`, tag `lmto`). See [`files/LMTO.md`](files/LMTO.md).
 
 - **Source:** already at `~/src` (copy, rsync, or symlink from the other machine)
-- **Intel:** offline installers in `files/` (`*fortran*offline.sh`, `*onemkl*offline.sh`)
+- **Intel:** apt via Intel oneAPI repo — `intel-oneapi-compiler-fortran` + `intel-oneapi-mkl-devel`
 - Then: apt deps → oneAPI → env → optional NFS → `./configure` + `make` in `~/src`
 
 ```bash
-ansible-playbook playbook.yml --ask-become-pass --tags lmto
+sudo --preserve-env=HOME \
+  ansible-playbook playbook.yml --tags lmto -e ansible_become=false
 
 # Prep only (no compile): set lmto_build: false in group_vars
 ```

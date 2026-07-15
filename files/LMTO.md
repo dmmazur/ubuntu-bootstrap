@@ -23,25 +23,40 @@ rsync -aH --info=progress2 dmazur@other-host:~/src/ ~/src/
 ln -s /dep24/dmazur/src ~/src   # only if that path exists on NFS
 ```
 
-## 2. Intel oneAPI installers → `ubuntu-bootstrap/files/`
+## 2. Intel oneAPI (apt)
 
-Place under `files/` (versioned names OK — globs match):
+The playbook adds Intel’s apt repo and installs:
 
-- `*fortran*offline.sh` — e.g. `intel-fortran-compiler-2025.1.0.601_offline.sh`
-- `*onemkl*offline.sh` — e.g. `intel-onemkl-2025.1.0.803_offline.sh`
+| Package | Purpose |
+|---------|---------|
+| `intel-oneapi-compiler-fortran` | `ifx` Fortran compiler |
+| `intel-oneapi-mkl-devel` | MKL for **building** LMTO (`ifx_mkl.mak`, `-qmkl`) |
 
-Downloads:
+Runtime-only MKL (`intel-oneapi-mkl`) is not used — compile needs `-devel`.
 
-- https://www.intel.com/content/www/us/en/developer/tools/oneapi/fortran-compiler-download.html
-- https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl-download.html
+Repo setup (automatic):  
+https://www.intel.com/content/www/us/en/docs/oneapi/installation-guide-linux/2025-0/apt-001.html
 
-Large installers under `files/` are not committed (see `.gitignore`).
+Manual equivalent:
+
+```bash
+wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
+  | gpg --dearmor | sudo tee /usr/share/keyrings/oneapi-archive-keyring.gpg > /dev/null
+echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" \
+  | sudo tee /etc/apt/sources.list.d/oneAPI.list
+sudo apt update
+sudo apt install intel-oneapi-compiler-fortran intel-oneapi-mkl-devel
+source /opt/intel/oneapi/setvars.sh
+```
+
+No offline `*offline.sh` installers in `files/` are required.
 
 ## 3. Run
 
 ```bash
-# After ~/src and files/*offline.sh are in place:
-ansible-playbook playbook.yml --ask-become-pass --tags lmto
+# After ~/src is in place:
+sudo --preserve-env=HOME \
+  ansible-playbook playbook.yml --tags lmto -e ansible_become=false
 ```
 
 Optional NFS (`lmto_nfs_enable: true` in `group_vars/all.yml`) mounts `pam254:/dep24`.
