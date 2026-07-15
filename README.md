@@ -62,7 +62,7 @@ Section banners (`>>> COMMON`, …) and per-package task names show progress.
 | `lab` | NFS, gv, emacs, terminals, etc. (`enable_lab_packages`) |
 | `snaps` | VS Code, Telegram, Claude Code |
 | `flatpak` | Flathub + Newelle, Flatseal (`install_flatpak`, currently off) |
-| `debs` | Cursor, VeraCrypt from `files/` |
+| `debs` | Cursor, VeraCrypt from `files/` (`install_debs`, currently off) |
 | `claude` | Claude Desktop apt repo + package |
 | `chrome` | Google Chrome apt repo + package |
 | `ollama` | Ollama tarball + systemd (`install_ollama`, currently off) |

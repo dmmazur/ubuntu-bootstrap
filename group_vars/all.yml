@@ -7,6 +7,8 @@ install_claude_desktop: true
 install_google_chrome: true
 install_ollama: false
 install_flatpak: false
+# Cursor/VeraCrypt .debs from files/ (off while testing other sections)
+install_debs: false
 # Lab/scientific extras (NFS, PostScript viewer, terminals, etc.)
 enable_lab_packages: true
 # Full LMTO stack: apt deps, Intel oneAPI (if installers present), env, build

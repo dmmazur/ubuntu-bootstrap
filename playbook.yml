@@ -87,6 +87,7 @@
     - name: ">>> DEBS — patterns {{ debs | map(attribute='pattern') | list }}"
       ansible.builtin.debug:
         msg: "Searching {{ playbook_dir }}/files for matching .deb files"
+      when: install_debs | bool
       tags: [debs]
 
     - name: Locate .deb packages in files/
@@ -96,14 +97,17 @@
         file_type: file
       loop: "{{ debs }}"
       register: deb_finds
+      when: install_debs | bool
       tags: [debs]
 
     - name: Install matching .deb
       ansible.builtin.apt:
         deb: "{{ (item.files | sort(attribute='mtime') | last).path }}"
         state: present
-      loop: "{{ deb_finds.results }}"
-      when: item.files | length > 0
+      loop: "{{ deb_finds.results | default([]) }}"
+      when:
+        - install_debs | bool
+        - item.files | length > 0
       loop_control:
         label: "{{ item.item.name }} -> {{ (item.files | sort(attribute='mtime') | last).path | basename }}"
       tags: [debs]
@@ -111,8 +115,10 @@
     - name: Warn when no matching .deb found
       ansible.builtin.debug:
         msg: "Skipping {{ item.item.name }} — no file matching files/{{ item.item.pattern }}"
-      loop: "{{ deb_finds.results }}"
-      when: item.files | length == 0
+      loop: "{{ deb_finds.results | default([]) }}"
+      when:
+        - install_debs | bool
+        - item.files | length == 0
       loop_control:
         label: "{{ item.item.name }}"
       tags: [debs]
