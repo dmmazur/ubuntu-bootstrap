@@ -54,6 +54,36 @@ Section banners (`>>> COMMON`, …) and per-package task names show progress.
 | `./scripts/bootstrap-flatpak.sh` | Flatpak (off by default) |
 | `./scripts/bootstrap-ollama.sh` | Ollama (off by default) |
 
+### Verify what is installed
+
+Read expectations from `group_vars/all.yml` and report **OK / MISSING / SKIP** (no Ansible). Exit `1` if anything expected is missing.
+
+```bash
+./verify-installed.sh              # all sections
+./scripts/verify-common.sh
+./scripts/verify-lab.sh
+./scripts/verify-snaps.sh
+./scripts/verify-lmto.sh           # Intel, ~/src, binaries, profile, scratch, symlinks, NFS
+./scripts/verify-claude.sh
+./scripts/verify-chrome.sh
+./scripts/verify-debs.sh           # SKIP when install_debs is false
+./scripts/verify-flatpak.sh
+./scripts/verify-ollama.sh
+```
+
+| Script | Checks |
+|--------|--------|
+| `./verify-installed.sh` | Full inventory status |
+| `./scripts/verify-common.sh` | Common apt packages |
+| `./scripts/verify-lab.sh` | Lab apt packages |
+| `./scripts/verify-snaps.sh` | Snap packages |
+| `./scripts/verify-debs.sh` | Cursor / VeraCrypt |
+| `./scripts/verify-claude.sh` | Claude Desktop + apt repo files |
+| `./scripts/verify-chrome.sh` | Chrome + apt repo files |
+| `./scripts/verify-lmto.sh` | LMTO apt/Intel/`~/src`/binaries/links/NFS |
+| `./scripts/verify-flatpak.sh` | Flatpak apps |
+| `./scripts/verify-ollama.sh` | Ollama binary + systemd |
+
 ## Tags
 
 | Tag | What it installs |
