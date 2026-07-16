@@ -23,6 +23,8 @@ rsync -aH --info=progress2 dmazur@other-host:~/src/ ~/src/
 ln -s /dep24/dmazur/src ~/src   # only if that path exists on NFS
 ```
 
+Do **not** put the tree under `ubuntu-bootstrap/` unless you change `lmto_src_dir` in `group_vars/all.yml`.
+
 ## 2. Intel oneAPI (apt)
 
 The playbook adds Intel’s apt repo and installs:
@@ -51,12 +53,27 @@ source /opt/intel/oneapi/setvars.sh
 
 No offline `*offline.sh` installers in `files/` are required.
 
-## 3. Run
+## 3. NFS and home symlinks
+
+| Setting | Default | Effect |
+|---------|---------|--------|
+| `lmto_nfs_enable` | `false` | Mount `pam254:/dep24` → `/dep24` and write fstab when true |
+| Home links | always attempted | `~/dep24`, `~/R_dep24`, `~/TeX_dep24` — created **only if** the link target already exists |
+
+With NFS off and `/dep24` absent, those symlinks are skipped (verify reports SKIP, not failure).
+
+## 4. Run / verify
 
 ```bash
-# After ~/src is in place:
+# Preferred
+./scripts/bootstrap-lmto.sh
+./scripts/verify-lmto.sh
+
+# Or Ansible directly (after ~/src is in place):
 sudo --preserve-env=HOME \
   ansible-playbook playbook.yml --tags lmto -e ansible_become=false
+
+# Prep only (no compile): set lmto_build: false in group_vars/all.yml
 ```
 
-Optional NFS (`lmto_nfs_enable: true` in `group_vars/all.yml`) mounts `pam254:/dep24`.
+`verify-lmto.sh` checks Intel apt packages, `setvars`, `~/src/configure`, `~/bin` / `~/bin/Linux/lmto`, profile, scratch, optional symlinks, and NFS when enabled.

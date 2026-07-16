@@ -14,17 +14,34 @@ cd ubuntu-bootstrap
 
 # Or one section at a time:
 ./scripts/bootstrap-common.sh
+./scripts/bootstrap-lab.sh
 ./scripts/bootstrap-snaps.sh
-./scripts/bootstrap-debs.sh
+./scripts/bootstrap-claude.sh
+./scripts/bootstrap-chrome.sh
 ./scripts/bootstrap-lmto.sh
+# ./scripts/bootstrap-debs.sh   # off by default (install_debs: false)
 ```
 
 Optional before running:
 
-- Cursor / VeraCrypt `.deb` files in `files/` (see below)
 - LMTO source tree at `~/src` (see [`files/LMTO.md`](files/LMTO.md))
+- Cursor / VeraCrypt `.deb` files in `files/` only if you set `install_debs: true`
 
 Verbose Ansible output: `BOOTSTRAP_VERBOSE=1 ./bootstrap.sh`
+
+### Current toggles (`group_vars/all.yml`)
+
+| Toggle | Default | Section |
+|--------|---------|---------|
+| *(always)* | on | `common`, `snaps` |
+| `enable_lab_packages` | `true` | `lab` |
+| `install_claude_desktop` | `true` | `claude` |
+| `install_google_chrome` | `true` | `chrome` |
+| `install_lmto` | `true` | `lmto` |
+| `lmto_nfs_enable` | `false` | NFS mount + `/dep24` convenience links |
+| `install_debs` | `false` | Cursor / VeraCrypt from `files/` |
+| `install_flatpak` | `false` | Flatpak apps |
+| `install_ollama` | `false` | Ollama |
 
 ### Manual ansible-playbook (alternative)
 
@@ -47,12 +64,12 @@ Section banners (`>>> COMMON`, …) and per-package task names show progress.
 | `./scripts/bootstrap-common.sh` | Common apt packages |
 | `./scripts/bootstrap-lab.sh` | Lab apt packages |
 | `./scripts/bootstrap-snaps.sh` | Snaps |
-| `./scripts/bootstrap-debs.sh` | Cursor, VeraCrypt `.debs` |
+| `./scripts/bootstrap-debs.sh` | Cursor, VeraCrypt `.debs` (`install_debs`, currently off) |
 | `./scripts/bootstrap-claude.sh` | Claude Desktop |
 | `./scripts/bootstrap-chrome.sh` | Google Chrome |
 | `./scripts/bootstrap-lmto.sh` | LMTO + Intel apt |
-| `./scripts/bootstrap-flatpak.sh` | Flatpak (off by default) |
-| `./scripts/bootstrap-ollama.sh` | Ollama (off by default) |
+| `./scripts/bootstrap-flatpak.sh` | Flatpak (`install_flatpak`, currently off) |
+| `./scripts/bootstrap-ollama.sh` | Ollama (`install_ollama`, currently off) |
 
 ### Verify what is installed
 
@@ -110,11 +127,18 @@ BOOTSTRAP_VERBOSE=1 ./scripts/bootstrap-snaps.sh
 
 | Path | Purpose |
 |------|---------|
+| `bootstrap.sh` | Full first-time install entrypoint |
+| `verify-installed.sh` | Full install-status check (no Ansible) |
 | `ansible.cfg` | Defaults (local inventory, become) |
 | `inventory.ini` | `localhost` with local connection |
 | `playbook.yml` | Bootstrap tasks |
 | `group_vars/all.yml` | Package lists, toggles, LMTO options |
-| `files/` | Local `.deb`s (not committed) |
+| `scripts/lib.sh` | Shared helpers for bootstrap-*.sh |
+| `scripts/verify-lib.sh` | Shared helpers for verify-*.sh |
+| `scripts/bootstrap-*.sh` | Per-section install scripts |
+| `scripts/verify-*.sh` | Per-section status checks |
+| `files/` | Optional local `.deb`s (not committed; used when `install_debs: true`) |
+| `files/LMTO.md` | LMTO source + Intel apt notes |
 | `roles/lmto/` | LMTO install role (prereqs → Intel apt → env → build) |
 
 ## LMTO
@@ -124,8 +148,13 @@ Separate step (`install_lmto: true`, tag `lmto`). See [`files/LMTO.md`](files/LM
 - **Source:** already at `~/src` (copy, rsync, or symlink from the other machine)
 - **Intel:** apt via Intel oneAPI repo — `intel-oneapi-compiler-fortran` + `intel-oneapi-mkl-devel`
 - Then: apt deps → oneAPI → env → optional NFS → `./configure` + `make` in `~/src`
+- **NFS** (`lmto_nfs_enable`) defaults to **false** — `/dep24` home symlinks are created only when those targets exist
 
 ```bash
+./scripts/bootstrap-lmto.sh
+./scripts/verify-lmto.sh
+
+# Or Ansible directly:
 sudo --preserve-env=HOME \
   ansible-playbook playbook.yml --tags lmto -e ansible_become=false
 
@@ -134,7 +163,7 @@ sudo --preserve-env=HOME \
 
 ## Local `.deb` downloads
 
-Place installers under `files/` (details in [`files/README.md`](files/README.md)):
+Currently **disabled** (`install_debs: false`). To use them, set `install_debs: true` and place installers under `files/` (details in [`files/README.md`](files/README.md)):
 
 | Package | Where to get it |
 |---------|-----------------|

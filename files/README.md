@@ -1,6 +1,9 @@
 # Optional local installers
 
-Copy downloaded `.deb` files into this directory. Versioned names are fine — no rename needed:
+Used only when `install_debs: true` in `group_vars/all.yml` (currently **false** —
+Cursor/VeraCrypt `.deb` install from this directory is skipped).
+
+When enabled, copy downloaded `.deb` files here. Versioned names are fine — no rename needed:
 
 - `veracrypt*.deb` (e.g. `veracrypt-1.26.29-Ubuntu-26.04-amd64.deb`)
 - `cursor*.deb` (e.g. `cursor_3.9.16_amd64.deb`)
@@ -8,6 +11,12 @@ Copy downloaded `.deb` files into this directory. Versioned names are fine — n
 If several files match a pattern, the newest (by modification time) is installed.
 
 `*.deb` files are gitignored so large binaries are not committed.
+
+```bash
+# After enabling install_debs: true
+./scripts/bootstrap-debs.sh
+./scripts/verify-debs.sh
+```
 
 For Intel oneAPI (Fortran + MKL via apt) and how to supply `~/src`, see [`LMTO.md`](LMTO.md).
 
@@ -49,4 +58,4 @@ cp ~/Downloads/cursor_*.deb files/
 
 **Alternative (no `.deb` in `files/`):** official apt repo after key install — see  
 https://downloads.cursor.com/aptrepo and key https://downloads.cursor.com/keys/anysphere.asc  
-(not wired into the playbook yet; `.deb` + `--tags debs` is the current path).
+(not wired into the playbook yet; when debs are enabled, `.deb` + `--tags debs` / `./scripts/bootstrap-debs.sh` is the path).
