@@ -101,6 +101,17 @@ Read expectations from `group_vars/all.yml` and report **OK / MISSING / SKIP** (
 | `./scripts/verify-flatpak.sh` | Flatpak apps |
 | `./scripts/verify-ollama.sh` | Ollama binary + systemd |
 
+### Gather LaTeX setup (from a machine that already has it)
+
+Run on the **old** workstation, then copy the report to this repo / new PC:
+
+```bash
+./scripts/gather-latex-setup.sh
+./scripts/gather-latex-setup.sh --archive   # also pack ~/texmf + latexmkrc
+```
+
+Writes `~/Downloads/latex-setup-report-*.txt` (plus optional `*-userdata.tgz` and tlmgr list).
+
 ## Tags
 
 | Tag | What it installs |
