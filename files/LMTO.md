@@ -77,3 +77,12 @@ sudo --preserve-env=HOME \
 ```
 
 `verify-lmto.sh` checks Intel apt packages, `setvars`, `~/src/configure`, `~/bin` / `~/bin/Linux/lmto`, profile, scratch, optional symlinks, and NFS when enabled.
+
+### Gather setup from the old machine
+
+```bash
+./scripts/gather-lmto-setup.sh
+./scripts/gather-lmto-setup.sh --archive
+```
+
+Collects `systemoptions`, `localoptions`, Intel oneAPI layout, NFS fstab, `~/bin`/`~/lib`, and `lmt` — not install steps from bash history.

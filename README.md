@@ -112,6 +112,17 @@ Run on the **old** workstation, then copy the report to this repo / new PC:
 
 Writes `~/Downloads/latex-setup-report-*.txt` (plus optional `*-userdata.tgz` and tlmgr list).
 
+### Gather LMTO setup (from a machine that already has it)
+
+Run on the **old** workstation (probes filesystem + configs; history is usage-only):
+
+```bash
+./scripts/gather-lmto-setup.sh
+./scripts/gather-lmto-setup.sh --archive   # also pack lmt, systemoptions, localoptions
+```
+
+Writes `~/Downloads/lmto-setup-report-*.txt`. Copy `~/src` separately via rsync.
+
 ## Tags
 
 | Tag | What it installs |
