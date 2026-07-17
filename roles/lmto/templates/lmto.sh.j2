@@ -1,9 +1,14 @@
 # LMTO + Intel oneAPI environment (ubuntu-bootstrap)
 
-# Intel compilers / MKL
+# Intel compilers / MKL (setvars is not safe under set -u / set -e)
 if [ -f "{{ lmto_intel_setvars }}" ]; then
+  _lmto_setvars_eu=$-
+  set +eu
   # shellcheck disable=SC1091
   . "{{ lmto_intel_setvars }}" >/dev/null 2>&1 || true
+  case "${_lmto_setvars_eu}" in *e*) set -e ;; esac
+  case "${_lmto_setvars_eu}" in *u*) set -u ;; esac
+  unset _lmto_setvars_eu
 fi
 
 # LMTO scripts (~/bin) and architecture-specific binaries (~/bin/$LSYSTEM)

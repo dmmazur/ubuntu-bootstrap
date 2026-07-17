@@ -2,6 +2,8 @@
 # Phase 2: create ~/src and unpack lmto base + patch archives
 # Tag: lmto-unpack
 # Order: base tar first, then patch tar over it (Readme.1st)
+# Ownership is fixed in always: so a mid-unpack failure still leaves
+# ~/src deletable by the home user (playbook runs as root via sudo).
 
 - name: ">>> UNPACK — create {{ lmto_src_dir }} and extract archives"
   ansible.builtin.debug:
@@ -10,116 +12,126 @@
       patch: "{{ lmto_archive_patch }}"
       search: "{{ lmto_archive_src_dirs }}"
 
-- name: Create LMTO source directory
-  ansible.builtin.file:
-    path: "{{ lmto_src_dir }}"
-    state: directory
-    owner: "{{ bootstrap_user }}"
-    mode: "0755"
+- name: Unpack LMTO archives
+  block:
+    - name: Create LMTO source directory
+      ansible.builtin.file:
+        path: "{{ lmto_src_dir }}"
+        state: directory
+        owner: "{{ bootstrap_user }}"
+        group: "{{ bootstrap_group }}"
+        mode: "0755"
 
-- name: Create LMTO home bin and lib directories
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: directory
-    owner: "{{ bootstrap_user }}"
-    mode: "0755"
-  loop:
-    - "{{ bootstrap_home }}/bin"
-    - "{{ bootstrap_home }}/bin/{{ lmto_lsystem }}"
-    - "{{ bootstrap_home }}/lib"
-    - "{{ bootstrap_home }}/lib/{{ lmto_lsystem }}"
-    - "{{ bootstrap_home }}/lib/LMHELP"
+    - name: Create LMTO home bin and lib directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ bootstrap_user }}"
+        group: "{{ bootstrap_group }}"
+        mode: "0755"
+      loop:
+        - "{{ bootstrap_home }}/bin"
+        - "{{ bootstrap_home }}/bin/{{ lmto_lsystem }}"
+        - "{{ bootstrap_home }}/lib"
+        - "{{ bootstrap_home }}/lib/{{ lmto_lsystem }}"
+        - "{{ bootstrap_home }}/lib/LMHELP"
 
-- name: Stat candidate base archives
-  ansible.builtin.stat:
-    path: "{{ item }}/{{ lmto_archive_base }}"
-  loop: "{{ lmto_archive_src_dirs }}"
-  register: lmto_base_stats
-  loop_control:
-    label: "{{ item }}/{{ lmto_archive_base }}"
+    - name: Stat candidate base archives
+      ansible.builtin.stat:
+        path: "{{ item }}/{{ lmto_archive_base }}"
+      loop: "{{ lmto_archive_src_dirs }}"
+      register: lmto_base_stats
+      loop_control:
+        label: "{{ item }}/{{ lmto_archive_base }}"
 
-- name: Stat candidate patch archives
-  ansible.builtin.stat:
-    path: "{{ item }}/{{ lmto_archive_patch }}"
-  loop: "{{ lmto_archive_src_dirs }}"
-  register: lmto_patch_stats
-  loop_control:
-    label: "{{ item }}/{{ lmto_archive_patch }}"
+    - name: Stat candidate patch archives
+      ansible.builtin.stat:
+        path: "{{ item }}/{{ lmto_archive_patch }}"
+      loop: "{{ lmto_archive_src_dirs }}"
+      register: lmto_patch_stats
+      loop_control:
+        label: "{{ item }}/{{ lmto_archive_patch }}"
 
-- name: Select first existing base archive
-  ansible.builtin.set_fact:
-    lmto_base_candidates: "{{ lmto_base_stats.results | selectattr('stat.exists') | map(attribute='stat.path') | list }}"
+    - name: Select first existing base archive
+      ansible.builtin.set_fact:
+        lmto_base_candidates: "{{ lmto_base_stats.results | selectattr('stat.exists') | map(attribute='stat.path') | list }}"
 
-- name: Select first existing patch archive
-  ansible.builtin.set_fact:
-    lmto_patch_candidates: "{{ lmto_patch_stats.results | selectattr('stat.exists') | map(attribute='stat.path') | list }}"
+    - name: Select first existing patch archive
+      ansible.builtin.set_fact:
+        lmto_patch_candidates: "{{ lmto_patch_stats.results | selectattr('stat.exists') | map(attribute='stat.path') | list }}"
 
-- name: Set chosen archive paths
-  ansible.builtin.set_fact:
-    lmto_found_base: "{{ lmto_base_candidates[0] | default('') }}"
-    lmto_found_patch: "{{ lmto_patch_candidates[0] | default('') }}"
+    - name: Set chosen archive paths
+      ansible.builtin.set_fact:
+        lmto_found_base: "{{ lmto_base_candidates[0] | default('') }}"
+        lmto_found_patch: "{{ lmto_patch_candidates[0] | default('') }}"
 
-- name: Fail if base archive is missing
-  ansible.builtin.assert:
-    that:
-      - lmto_found_base is defined
-      - lmto_found_base | length > 0
-    fail_msg: >-
-      Base archive {{ lmto_archive_base }} not found under
-      {{ lmto_archive_src_dirs | join(', ') }}.
-      Place it in files/ or {{ lmto_src_dir }} then re-run --tags lmto-unpack.
+    - name: Fail if base archive is missing
+      ansible.builtin.assert:
+        that:
+          - lmto_found_base is defined
+          - lmto_found_base | length > 0
+        fail_msg: >-
+          Base archive {{ lmto_archive_base }} not found under
+          {{ lmto_archive_src_dirs | join(', ') }}.
+          Place it in files/ or {{ lmto_src_dir }} then re-run --tags lmto-unpack.
 
-- name: Fail if patch archive is missing
-  ansible.builtin.assert:
-    that:
-      - lmto_found_patch is defined
-      - lmto_found_patch | length > 0
-    fail_msg: >-
-      Patch archive {{ lmto_archive_patch }} not found under
-      {{ lmto_archive_src_dirs | join(', ') }}.
-      Place it next to the base archive then re-run --tags lmto-unpack.
+    - name: Fail if patch archive is missing
+      ansible.builtin.assert:
+        that:
+          - lmto_found_patch is defined
+          - lmto_found_patch | length > 0
+        fail_msg: >-
+          Patch archive {{ lmto_archive_patch }} not found under
+          {{ lmto_archive_src_dirs | join(', ') }}.
+          Place it next to the base archive then re-run --tags lmto-unpack.
 
-- name: Copy base archive into source dir if needed
-  ansible.builtin.copy:
-    src: "{{ lmto_found_base }}"
-    dest: "{{ lmto_src_dir }}/{{ lmto_archive_base }}"
-    remote_src: true
-    owner: "{{ bootstrap_user }}"
-    mode: "0644"
-  when: lmto_found_base != (lmto_src_dir + '/' + lmto_archive_base)
+    - name: Copy base archive into source dir if needed
+      ansible.builtin.copy:
+        src: "{{ lmto_found_base }}"
+        dest: "{{ lmto_src_dir }}/{{ lmto_archive_base }}"
+        remote_src: true
+        owner: "{{ bootstrap_user }}"
+        group: "{{ bootstrap_group }}"
+        mode: "0644"
+      when: lmto_found_base != (lmto_src_dir + '/' + lmto_archive_base)
 
-- name: Copy patch archive into source dir if needed
-  ansible.builtin.copy:
-    src: "{{ lmto_found_patch }}"
-    dest: "{{ lmto_src_dir }}/{{ lmto_archive_patch }}"
-    remote_src: true
-    owner: "{{ bootstrap_user }}"
-    mode: "0644"
-  when: lmto_found_patch != (lmto_src_dir + '/' + lmto_archive_patch)
+    - name: Copy patch archive into source dir if needed
+      ansible.builtin.copy:
+        src: "{{ lmto_found_patch }}"
+        dest: "{{ lmto_src_dir }}/{{ lmto_archive_patch }}"
+        remote_src: true
+        owner: "{{ bootstrap_user }}"
+        group: "{{ bootstrap_group }}"
+        mode: "0644"
+      when: lmto_found_patch != (lmto_src_dir + '/' + lmto_archive_patch)
 
-- name: Unpack LMTO base archive
-  ansible.builtin.unarchive:
-    src: "{{ lmto_src_dir }}/{{ lmto_archive_base }}"
-    dest: "{{ lmto_src_dir }}"
-    remote_src: true
-    owner: "{{ bootstrap_user }}"
-    creates: "{{ lmto_src_dir }}/configure"
-  become: false
+    - name: Unpack LMTO base archive
+      ansible.builtin.unarchive:
+        src: "{{ lmto_src_dir }}/{{ lmto_archive_base }}"
+        dest: "{{ lmto_src_dir }}"
+        remote_src: true
+        owner: "{{ bootstrap_user }}"
+        group: "{{ bootstrap_group }}"
+        creates: "{{ lmto_src_dir }}/configure"
 
-- name: Unpack LMTO patch archive over base
-  ansible.builtin.unarchive:
-    src: "{{ lmto_src_dir }}/{{ lmto_archive_patch }}"
-    dest: "{{ lmto_src_dir }}"
-    remote_src: true
-    owner: "{{ bootstrap_user }}"
-    creates: "{{ lmto_src_dir }}/MAK/{{ lmto_makefile_intel }}"
-  become: false
+    - name: Unpack LMTO patch archive over base
+      ansible.builtin.unarchive:
+        src: "{{ lmto_src_dir }}/{{ lmto_archive_patch }}"
+        dest: "{{ lmto_src_dir }}"
+        remote_src: true
+        owner: "{{ bootstrap_user }}"
+        group: "{{ bootstrap_group }}"
+        creates: "{{ lmto_src_dir }}/MAK/{{ lmto_makefile_intel }}"
 
-- name: Verify unpack produced configure + makefile
-  ansible.builtin.assert:
-    that:
-      - (lmto_src_dir + '/configure') is exists
-      - (lmto_src_dir + '/MAK/' + lmto_makefile_intel) is exists
-    fail_msg: >-
-      Unpack finished but {{ lmto_src_dir }}/configure or
-      MAK/{{ lmto_makefile_intel }} is missing.
+    - name: Verify unpack produced configure + makefile
+      ansible.builtin.assert:
+        that:
+          - (lmto_src_dir + '/configure') is exists
+          - (lmto_src_dir + '/MAK/' + lmto_makefile_intel) is exists
+        fail_msg: >-
+          Unpack finished but {{ lmto_src_dir }}/configure or
+          MAK/{{ lmto_makefile_intel }} is missing.
+
+  always:
+    - name: Reclaim ownership after unpack
+      ansible.builtin.include_tasks: ownership.yml

@@ -207,26 +207,23 @@
       ansible.builtin.debug:
         msg: "LMTO role: LSYSTEM={{ lmto_lsystem }}, src={{ lmto_src_dir }}"
       when: install_lmto | bool
-      tags: [lmto, lmto-intel, lmto-unpack, lmto-build, lmto-xscr]
+      tags: [lmto, lmto-intel, lmto-unpack, lmto-build, lmto-xscr, lmto-ownership]
 
     - name: Install LMTO and prerequisites
       ansible.builtin.include_role:
         name: lmto
       when: install_lmto | bool
-      tags: [lmto, lmto-intel, lmto-unpack, lmto-build, lmto-xscr]
+      tags: [lmto, lmto-intel, lmto-unpack, lmto-build, lmto-xscr, lmto-ownership]
 
-    # Local .debs last (disabled by default). Block when= skips the whole
-    # section so we never loop over skipped find results and break labels.
-    - name: ">>> DEBS — patterns {{ debs | map(attribute='pattern') | list }}"
-      ansible.builtin.debug:
-        msg: "Searching {{ playbook_dir }}/files for matching .deb files"
-      when: install_debs | bool
-      tags: [debs]
-
+    # Local .debs last (disabled by default). Only enter this section when enabled.
     - name: Install local .deb packages from files/
       when: install_debs | bool
       tags: [debs]
       block:
+        - name: ">>> DEBS — patterns {{ debs | map(attribute='pattern') | list }}"
+          ansible.builtin.debug:
+            msg: "Searching {{ playbook_dir }}/files for matching .deb files"
+
         - name: Locate .deb packages in files/
           ansible.builtin.find:
             paths: "{{ playbook_dir }}/files"
@@ -241,16 +238,14 @@
           ansible.builtin.apt:
             deb: "{{ (item.files | sort(attribute='mtime') | last).path }}"
             state: present
-          loop: "{{ deb_finds.results }}"
-          when: item.files | default([]) | length > 0
+          loop: "{{ deb_finds.results | selectattr('files', 'defined') | rejectattr('files', 'equalto', []) | list }}"
           loop_control:
             label: "{{ item.item.name }} -> {{ (item.files | sort(attribute='mtime') | last).path | basename }}"
 
         - name: Warn when no matching .deb found
           ansible.builtin.debug:
             msg: "Skipping {{ item.item.name }} — no file matching files/{{ item.item.pattern }}"
-          loop: "{{ deb_finds.results }}"
-          when: item.files | default([]) | length == 0
+          loop: "{{ deb_finds.results | selectattr('files', 'defined') | selectattr('files', 'equalto', []) | list }}"
           loop_control:
             label: "{{ item.item.name }}"
 

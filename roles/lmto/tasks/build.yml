@@ -1,6 +1,14 @@
 ---
 # Phase 3: apt build deps, configure, localoptions FFLAGS, make
 # Tag: lmto-build
+#
+# Note: Intel setvars.sh is not safe under `set -euo pipefail` — an error
+# inside the sourced script aborts the shell before `|| true` can run.
+# Always `set +eu` around sourcing setvars.
+#
+# Playbook runs as root (sudo + ansible_become=false). configure/make are
+# executed as bootstrap_user via runuser so outputs are never root-owned.
+# Ownership is also forced in always: if make fails mid-way.
 
 - name: ">>> BUILD — configure + make (LSYSTEM={{ lmto_lsystem }})"
   ansible.builtin.debug:
@@ -8,6 +16,7 @@
       makefile: "{{ lmto_makefile_intel }}"
       fflags_extra: "{{ lmto_fflags_extra }}"
       jobs: "{{ lmto_make_jobs }}"
+      as_user: "{{ bootstrap_user }}"
 
 - name: Install LMTO apt build prerequisites
   ansible.builtin.apt:
@@ -42,12 +51,15 @@
   ansible.builtin.file:
     path: "{{ lmto_src_dir }}/configure"
     mode: "0755"
+    owner: "{{ bootstrap_user }}"
+    group: "{{ bootstrap_group }}"
 
 - name: Ensure home bin/lib dirs exist for build output
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
     owner: "{{ bootstrap_user }}"
+    group: "{{ bootstrap_group }}"
     mode: "0755"
   loop:
     - "{{ bootstrap_home }}/bin"
@@ -58,11 +70,12 @@
 
 - name: Detect Intel ifx availability (after setvars)
   ansible.builtin.shell: |
-    set -e
+    set +eu
     if [ -f "{{ lmto_intel_setvars }}" ]; then
       # shellcheck disable=SC1091
       . "{{ lmto_intel_setvars }}" >/dev/null 2>&1 || true
     fi
+    set -e
     command -v ifx
   args:
     executable: /bin/bash
@@ -78,68 +91,106 @@
   ansible.builtin.debug:
     msg: "Using MAK/{{ lmto_makefile }} (ifx rc={{ lmto_ifx_check.rc }})"
 
-- name: Configure LMTO non-interactively
-  ansible.builtin.shell: |
-    set -euo pipefail
-    if [ -f "{{ lmto_intel_setvars }}" ]; then
-      # shellcheck disable=SC1091
-      . "{{ lmto_intel_setvars }}" >/dev/null 2>&1 || true
-    fi
-    export LSYSTEM="{{ lmto_lsystem }}"
-    export HOME="{{ bootstrap_home }}"
-    # Stock configure prompts: development? makefile? BLAS/LAPACK?
-    printf '%s\n' '' '{{ lmto_makefile }}' '' | ./configure
-  args:
-    chdir: "{{ lmto_src_dir }}"
-    executable: /bin/bash
-    creates: "{{ lmto_src_dir }}/OBJ/{{ lmto_lsystem }}/systemoptions"
-  become: false
-  environment:
-    LSYSTEM: "{{ lmto_lsystem }}"
-    HOME: "{{ bootstrap_home }}"
+- name: Configure and build LMTO
+  block:
+    - name: Reclaim ownership before configure/make
+      ansible.builtin.include_tasks: ownership.yml
 
-- name: Apply extra FFLAGS in localoptions
-  ansible.builtin.replace:
-    path: "{{ lmto_src_dir }}/OBJ/{{ lmto_lsystem }}/localoptions"
-    regexp: '(-fp-model=fast)(?! {{ lmto_fflags_extra | regex_escape }})'
-    replace: '\1 {{ lmto_fflags_extra }}'
-  become: false
-  when:
-    - lmto_fflags_extra | length > 0
-    - (lmto_src_dir + '/OBJ/' + lmto_lsystem + '/localoptions') is exists
+    - name: Configure LMTO non-interactively
+      ansible.builtin.shell: |
+        set +eu
+        if [ -f "{{ lmto_intel_setvars }}" ]; then
+          # shellcheck disable=SC1091
+          . "{{ lmto_intel_setvars }}" >/dev/null 2>&1 || true
+        fi
+        set -euo pipefail
+        export LSYSTEM="{{ lmto_lsystem }}"
+        export HOME="{{ bootstrap_home }}"
+        export PATH="{{ bootstrap_home }}/bin:{{ bootstrap_home }}/bin/{{ lmto_lsystem }}:${PATH}"
+        run_as_user() {
+          if [ "$(id -u)" -eq 0 ] && [ "{{ bootstrap_user }}" != root ]; then
+            runuser -u "{{ bootstrap_user }}" --preserve-environment -- "$@"
+          else
+            "$@"
+          fi
+        }
+        # Stock configure prompts: development? makefile? BLAS/LAPACK?
+        printf '%s\n' '' '{{ lmto_makefile }}' '' | run_as_user ./configure
+      args:
+        chdir: "{{ lmto_src_dir }}"
+        executable: /bin/bash
+        creates: "{{ lmto_src_dir }}/OBJ/{{ lmto_lsystem }}/systemoptions"
+      environment:
+        LSYSTEM: "{{ lmto_lsystem }}"
+        HOME: "{{ bootstrap_home }}"
 
-- name: Build LMTO (make)
-  ansible.builtin.shell: |
-    set -euo pipefail
-    if [ -f "{{ lmto_intel_setvars }}" ]; then
-      # shellcheck disable=SC1091
-      . "{{ lmto_intel_setvars }}" >/dev/null 2>&1 || true
-    fi
-    export LSYSTEM="{{ lmto_lsystem }}"
-    make -j"{{ lmto_make_jobs }}"
-  args:
-    chdir: "{{ lmto_src_dir }}"
-    executable: /bin/bash
-  become: false
-  environment:
-    LSYSTEM: "{{ lmto_lsystem }}"
-    HOME: "{{ bootstrap_home }}"
+    - name: Exclude optional targets from LMTO makefile (AIR; skip broken old C)
+      ansible.builtin.replace:
+        path: "{{ item }}"
+        regexp: '\s+({{ lmto_exclude_targets | map("regex_escape") | join("|") }})'
+        replace: ''
+      loop:
+        - "{{ lmto_src_dir }}/OBJ/{{ lmto_lsystem }}/systemoptions"
+        - "{{ lmto_src_dir }}/OBJ/{{ lmto_lsystem }}/makefile"
+      when:
+        - lmto_exclude_targets | default([]) | length > 0
+        - item is exists
 
-- name: Verify lmto binary is available
-  ansible.builtin.stat:
-    path: "{{ bootstrap_home }}/bin/{{ lmto_lsystem }}/lmto"
-  register: lmto_lmto_bin
+    - name: Apply extra FFLAGS in localoptions
+      ansible.builtin.replace:
+        path: "{{ lmto_src_dir }}/OBJ/{{ lmto_lsystem }}/localoptions"
+        regexp: '(-fp-model=fast)(?! {{ lmto_fflags_extra | regex_escape }})'
+        replace: '\1 {{ lmto_fflags_extra }}'
+      when:
+        - lmto_fflags_extra | length > 0
+        - (lmto_src_dir + '/OBJ/' + lmto_lsystem + '/localoptions') is exists
 
-- name: Verify lmt wrapper script is available
-  ansible.builtin.stat:
-    path: "{{ bootstrap_home }}/bin/lmt"
-  register: lmto_lmt_script
+    - name: Build LMTO (make)
+      ansible.builtin.shell: |
+        set +eu
+        if [ -f "{{ lmto_intel_setvars }}" ]; then
+          # shellcheck disable=SC1091
+          . "{{ lmto_intel_setvars }}" >/dev/null 2>&1 || true
+        fi
+        set -euo pipefail
+        export LSYSTEM="{{ lmto_lsystem }}"
+        export HOME="{{ bootstrap_home }}"
+        export PATH="{{ bootstrap_home }}/bin:{{ bootstrap_home }}/bin/{{ lmto_lsystem }}:${PATH}"
+        run_as_user() {
+          if [ "$(id -u)" -eq 0 ] && [ "{{ bootstrap_user }}" != root ]; then
+            runuser -u "{{ bootstrap_user }}" --preserve-environment -- "$@"
+          else
+            "$@"
+          fi
+        }
+        # Serial only — LMTO makefiles race on sysbat / makefile.run with -j.
+        run_as_user make
+      args:
+        chdir: "{{ lmto_src_dir }}"
+        executable: /bin/bash
+      environment:
+        LSYSTEM: "{{ lmto_lsystem }}"
+        HOME: "{{ bootstrap_home }}"
 
-- name: Report LMTO build result
-  ansible.builtin.debug:
-    msg: >-
-      Build finished. makefile={{ lmto_makefile }};
-      lmto binary exists={{ lmto_lmto_bin.stat.exists | default(false) }}
-      at {{ bootstrap_home }}/bin/{{ lmto_lsystem }}/lmto;
-      lmt script exists={{ lmto_lmt_script.stat.exists | default(false) }}.
-      Open a new shell (or source ~/.bashrc) so LSYSTEM/setvars apply.
+    - name: Verify lmto binary is available
+      ansible.builtin.stat:
+        path: "{{ bootstrap_home }}/bin/{{ lmto_lsystem }}/lmto"
+      register: lmto_lmto_bin
+
+    - name: Verify lmt wrapper script is available
+      ansible.builtin.stat:
+        path: "{{ bootstrap_home }}/bin/lmt"
+      register: lmto_lmt_script
+
+    - name: Report LMTO build result
+      ansible.builtin.debug:
+        msg: >-
+          Build finished. makefile={{ lmto_makefile }};
+          lmto binary exists={{ lmto_lmto_bin.stat.exists | default(false) }}
+          at {{ bootstrap_home }}/bin/{{ lmto_lsystem }}/lmto;
+          lmt script exists={{ lmto_lmt_script.stat.exists | default(false) }}.
+          Open a new shell (or source ~/.bashrc) so LSYSTEM/setvars apply.
+
+  always:
+    - name: Reclaim ownership after build
+      ansible.builtin.include_tasks: ownership.yml

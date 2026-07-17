@@ -9,6 +9,7 @@ set -euo pipefail
 #   ./scripts/bootstrap-lmto.sh unpack       # 2) ~/src + unpack archives
 #   ./scripts/bootstrap-lmto.sh build        # 3) configure + make
 #   ./scripts/bootstrap-lmto.sh xscr         # 4) copy Xscr
+#   ./scripts/bootstrap-lmto.sh ownership    # chown ~/src ~/bin ~/lib → login user
 #
 # Extra args after the phase are passed to ansible-playbook, e.g.:
 #   ./scripts/bootstrap-lmto.sh intel --check
@@ -19,7 +20,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 phase="all"
 if [[ $# -gt 0 ]]; then
   case "$1" in
-    all|intel|unpack|build|xscr)
+    all|intel|unpack|build|xscr|ownership)
       phase="$1"
       shift
       ;;
@@ -27,11 +28,12 @@ if [[ $# -gt 0 ]]; then
 fi
 
 case "${phase}" in
-  all)    tags="lmto" ;;
-  intel)  tags="lmto-intel" ;;
-  unpack) tags="lmto-unpack" ;;
-  build)  tags="lmto-build" ;;
-  xscr)   tags="lmto-xscr" ;;
+  all)       tags="lmto" ;;
+  intel)     tags="lmto-intel" ;;
+  unpack)    tags="lmto-unpack" ;;
+  build)     tags="lmto-build" ;;
+  xscr)      tags="lmto-xscr" ;;
+  ownership) tags="lmto-ownership" ;;
 esac
 
 ensure_prerequisites

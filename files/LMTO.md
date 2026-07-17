@@ -8,6 +8,7 @@ Phased install — each step can run alone:
 | 2 Unpack | `./scripts/bootstrap-lmto.sh unpack` (`lmto-unpack`) | Create `~/src`, unpack base then patch archives |
 | 3 Build | `./scripts/bootstrap-lmto.sh build` (`lmto-build`) | apt deps, `./configure`, edit `localoptions`, `make` |
 | 4 Xscr | `./scripts/bootstrap-lmto.sh xscr` (`lmto-xscr`) | Copy `SCRIPT/Xscr` → `~/bin/Xscr` + symlink in `~/bin/ifx/` |
+| Ownership | `./scripts/bootstrap-lmto.sh ownership` (`lmto-ownership`) | `chown` `~/src` `~/bin` `~/lib` to the login user (also runs after unpack/build even on failure) |
 | All | `./scripts/bootstrap-lmto.sh` (`lmto`) | All enabled phases |
 
 ## Archives (phase 2)
@@ -42,6 +43,8 @@ source /opt/intel/oneapi/setvars.sh
 | `lmto_lsystem` | `ifx` |
 | `lmto_makefile_intel` | `ifx_mkl.mak` |
 | `lmto_fflags_extra` | `-xHost -debug all -g -traceback` |
+| `lmto_make_jobs` | `1` (LMTO makefiles are not parallel-safe) |
+| `lmto_exclude_targets` | `GRFTOOLS`, `XSCR` (AIR omitted these; old C vs modern gcc) |
 | Output | `~/bin/ifx`, `~/lib/ifx` |
 
 ## NFS

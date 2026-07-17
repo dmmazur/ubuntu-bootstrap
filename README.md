@@ -72,6 +72,7 @@ Section banners (`>>> COMMON`, …) and per-package task names show progress.
 | `./scripts/bootstrap-lmto.sh unpack` | `~/src` + unpack archives |
 | `./scripts/bootstrap-lmto.sh build` | configure + make |
 | `./scripts/bootstrap-lmto.sh xscr` | copy Xscr |
+| `./scripts/bootstrap-lmto.sh ownership` | chown `~/src` `~/bin` `~/lib` → login user |
 | `./scripts/bootstrap-flatpak.sh` | Flatpak (`install_flatpak`, currently off) |
 | `./scripts/bootstrap-ollama.sh` | Ollama (`install_ollama`, currently off) |
 

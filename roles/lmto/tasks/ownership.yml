@@ -1,0 +1,25 @@
+---
+# Reclaim LMTO paths under the login home user.
+# Safe to run anytime: ./scripts/bootstrap-lmto.sh ownership
+# Also invoked from unpack/build/xscr `always:` so a failed make still
+# leaves files deletable by the home user.
+
+- name: "Ensure LMTO paths owned by {{ bootstrap_user }}:{{ bootstrap_group }}"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ bootstrap_user }}"
+    group: "{{ bootstrap_group }}"
+    recurse: true
+  loop:
+    - "{{ lmto_src_dir }}"
+    - "{{ bootstrap_home }}/bin"
+    - "{{ bootstrap_home }}/lib"
+  when: item is exists
+  failed_when: false
+  tags:
+    - lmto
+    - lmto-ownership
+    - lmto-unpack
+    - lmto-build
+    - lmto-xscr

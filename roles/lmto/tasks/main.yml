@@ -49,6 +49,13 @@
   when: lmto_install_xscr | bool
   tags: [lmto, lmto-xscr]
 
+- name: Fix ownership of LMTO home paths only
+  ansible.builtin.include_tasks:
+    file: ownership.yml
+    apply:
+      tags: [lmto, lmto-ownership]
+  tags: [lmto, lmto-ownership]
+
 - name: Include optional NFS (when enabled)
   ansible.builtin.include_tasks:
     file: nfs.yml

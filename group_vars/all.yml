@@ -104,9 +104,14 @@ ollama_tarball_url: https://ollama.com/download/ollama-linux-amd64.tar.zst
 # Full stack: tag lmto   Reference: AIR install (LSYSTEM=ifx)
 # =============================================================================
 
-# Prefer login user home when playbook is run via sudo --preserve-env=HOME
+# Prefer login user home when playbook is run via sudo --preserve-env=HOME.
+# bootstrap_user: SUDO_USER when present; else basename of HOME (not root from ansible_user_id).
 bootstrap_home: "{{ ansible_facts['env']['HOME'] | default(lookup('env', 'HOME'), true) }}"
-bootstrap_user: "{{ lookup('env', 'SUDO_USER') | default(ansible_facts['user_id'], true) }}"
+bootstrap_user: >-
+  {{ ansible_facts['env']['SUDO_USER']
+     | default(lookup('env', 'SUDO_USER'), true)
+     | default(bootstrap_home | basename, true) }}
+bootstrap_group: "{{ bootstrap_user }}"
 lmto_src_dir: "{{ bootstrap_home }}/src"
 
 # Phase toggles (also runnable separately via tags / bootstrap-lmto.sh <phase>)
@@ -124,6 +129,12 @@ lmto_makefile_gfortran: gfortran.mak
 
 # Extra FFLAGS appended in OBJ/$LSYSTEM/localoptions (AIR: -xHost -debug all -g -traceback)
 lmto_fflags_extra: "-xHost -debug all -g -traceback"
+
+# Drop from configure TARGETS / makefile all: (AIR omitted these; Xscr is phase lmto-xscr).
+# GRFTOOLS old C fails on modern gcc (implicit-function-declaration).
+lmto_exclude_targets:
+  - GRFTOOLS
+  - XSCR
 
 # --- Phase 1: Intel oneAPI apt ---
 lmto_install_intel_fortran_apt: true
@@ -161,7 +172,8 @@ lmto_archive_src_dirs:
 lmto_scratch_enable: false
 lmto_scratch_dir: /scratch
 lmto_scratch_mode: "0777"
-lmto_make_jobs: "{{ ansible_processor_vcpus | default(4) }}"
+# LMTO makefiles are not parallel-safe (races on sysbat / makefile.run). Keep 1.
+lmto_make_jobs: 1
 
 # Optional institute NFS (AIR: off)
 lmto_nfs_enable: false
