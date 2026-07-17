@@ -18,13 +18,12 @@
       jobs: "{{ lmto_make_jobs }}"
       as_user: "{{ bootstrap_user }}"
 
-- name: Install LMTO apt build prerequisites
-  ansible.builtin.apt:
-    name: "{{ item }}"
-    state: present
-  loop: "{{ apt_packages_lmto }}"
-  loop_control:
-    label: "{{ item }}"
+- name: Install LMTO apt build prerequisites (logged)
+  ansible.builtin.include_tasks:
+    file: "{{ playbook_dir }}/tasks/logged_apt_install.yml"
+  vars:
+    logged_apt_name: apt-lmto-build
+    logged_apt_packages: "{{ apt_packages_lmto }}"
 
 - name: Create scratch directory for builds
   ansible.builtin.file:
@@ -103,10 +102,12 @@
           # shellcheck disable=SC1091
           . "{{ lmto_intel_setvars }}" >/dev/null 2>&1 || true
         fi
-        set -euo pipefail
+        set -uo pipefail
         export LSYSTEM="{{ lmto_lsystem }}"
         export HOME="{{ bootstrap_home }}"
         export PATH="{{ bootstrap_home }}/bin:{{ bootstrap_home }}/bin/{{ lmto_lsystem }}:${PATH}"
+        mkdir -p "{{ bootstrap_log_dir }}"
+        logf="{{ bootstrap_log_dir }}/configure.log"
         run_as_user() {
           if [ "$(id -u)" -eq 0 ] && [ "{{ bootstrap_user }}" != root ]; then
             runuser -u "{{ bootstrap_user }}" --preserve-environment -- "$@"
@@ -114,8 +115,15 @@
             "$@"
           fi
         }
-        # Stock configure prompts: development? makefile? BLAS/LAPACK?
-        printf '%s\n' '' '{{ lmto_makefile }}' '' | run_as_user ./configure
+        set +e
+        {
+          printf '# %s  ./configure (makefile=%s)\n' "$(date -Iseconds)" '{{ lmto_makefile }}'
+          # Stock configure prompts: development? makefile? BLAS/LAPACK?
+          printf '%s\n' '' '{{ lmto_makefile }}' '' | run_as_user ./configure
+        } 2>&1 | tee -a "${logf}"
+        rc=${PIPESTATUS[0]}
+        set -e
+        exit "${rc}"
       args:
         chdir: "{{ lmto_src_dir }}"
         executable: /bin/bash
@@ -152,10 +160,12 @@
           # shellcheck disable=SC1091
           . "{{ lmto_intel_setvars }}" >/dev/null 2>&1 || true
         fi
-        set -euo pipefail
+        set -uo pipefail
         export LSYSTEM="{{ lmto_lsystem }}"
         export HOME="{{ bootstrap_home }}"
         export PATH="{{ bootstrap_home }}/bin:{{ bootstrap_home }}/bin/{{ lmto_lsystem }}:${PATH}"
+        mkdir -p "{{ bootstrap_log_dir }}"
+        logf="{{ bootstrap_log_dir }}/make.log"
         run_as_user() {
           if [ "$(id -u)" -eq 0 ] && [ "{{ bootstrap_user }}" != root ]; then
             runuser -u "{{ bootstrap_user }}" --preserve-environment -- "$@"
@@ -163,8 +173,15 @@
             "$@"
           fi
         }
-        # Serial only — LMTO makefiles race on sysbat / makefile.run with -j.
-        run_as_user make
+        set +e
+        {
+          printf '# %s  make (serial)\n' "$(date -Iseconds)"
+          # Serial only — LMTO makefiles race on sysbat / makefile.run with -j.
+          run_as_user make
+        } 2>&1 | tee -a "${logf}"
+        rc=${PIPESTATUS[0]}
+        set -e
+        exit "${rc}"
       args:
         chdir: "{{ lmto_src_dir }}"
         executable: /bin/bash

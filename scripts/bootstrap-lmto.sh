@@ -10,7 +10,7 @@ set -euo pipefail
 #   ./scripts/bootstrap-lmto.sh rdir         # 2b) create ~/R (cases)
 #   ./scripts/bootstrap-lmto.sh build        # 3) configure + make
 #   ./scripts/bootstrap-lmto.sh xscr         # 4) copy Xscr
-#   ./scripts/bootstrap-lmto.sh test         # 5) Fe case: ~/R/Fe + lmt Fe
+#   ./scripts/bootstrap-lmto.sh test         # 5) wipe ~/R/Fe + bare lmt
 #   ./scripts/bootstrap-lmto.sh ownership    # chown ~/src ~/bin ~/lib ~/R → login user
 #
 # Extra args after the phase are passed to ansible-playbook, e.g.:

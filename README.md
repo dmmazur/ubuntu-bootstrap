@@ -56,6 +56,8 @@ sudo --preserve-env=HOME \
 
 Section banners (`>>> COMMON`, …) and per-package task names show progress.
 
+**Command logs:** each `./scripts/bootstrap-*.sh` run writes under a temp dir (`/tmp/ubuntu-bootstrap.XXXXXX`), also linked as `/tmp/ubuntu-bootstrap-latest`. Includes `playbook.log` (full console), `ansible.log` (Ansible detail), and per-command files such as `apt-*.log`, `configure.log`, `make.log`, `lmt-Fe.log`.
+
 ### Install scripts
 
 | Script | Section |
@@ -73,7 +75,7 @@ Section banners (`>>> COMMON`, …) and per-package task names show progress.
 | `./scripts/bootstrap-lmto.sh rdir` | Create `~/R` (LMTO cases) |
 | `./scripts/bootstrap-lmto.sh build` | configure + make |
 | `./scripts/bootstrap-lmto.sh xscr` | copy Xscr |
-| `./scripts/bootstrap-lmto.sh test` | Fe smoke test: `~/R/Fe` + `lmt Fe` |
+| `./scripts/bootstrap-lmto.sh test` | Fe smoke test: wipe `~/R/Fe` + bare `lmt` |
 | `./scripts/bootstrap-lmto.sh ownership` | chown `~/src` `~/bin` `~/lib` → login user |
 | `./scripts/bootstrap-flatpak.sh` | Flatpak (`install_flatpak`, currently off) |
 | `./scripts/bootstrap-ollama.sh` | Ollama (`install_ollama`, currently off) |
@@ -148,7 +150,7 @@ Writes `~/Downloads/lmto-setup-report-*.txt`. Copy `~/src` separately via rsync.
 | `lmto-rdir` | Create `~/R` for LMTO cases |
 | `lmto-build` | apt deps, configure, localoptions, make |
 | `lmto-xscr` | Copy `SCRIPT/Xscr` → `~/bin` + `~/bin/ifx` |
-| `lmto-test` | Fe case: `~/R/Fe` + interactive `lmt Fe` structure setup |
+| `lmto-test` | Wipe `~/R/Fe`, run bare `lmt` structure setup |
 | `lmto-ownership` | chown LMTO home paths to login user |
 
 Examples:
@@ -189,7 +191,7 @@ Defaults match the AIR workstation: **`LSYSTEM=ifx`**, archives → configure/ma
 ./scripts/bootstrap-lmto.sh rdir     # 2b) ~/R (cases for lmt)
 ./scripts/bootstrap-lmto.sh build    # 3) configure + make
 ./scripts/bootstrap-lmto.sh xscr     # 4) SCRIPT/Xscr → ~/bin
-./scripts/bootstrap-lmto.sh test     # 5) ~/R/Fe + lmt Fe
+./scripts/bootstrap-lmto.sh test     # 5) wipe ~/R/Fe + lmt
 # or all:
 ./scripts/bootstrap-lmto.sh
 ./scripts/verify-lmto.sh

@@ -1,9 +1,12 @@
 ---
-# Smoke-test LMTO: create ~/R/Fe and run interactive structure setup via lmt.
+# Smoke-test LMTO: wipe ~/R/Fe, run interactive structure setup via lmt.
 # Tag: lmto-test
 #
-# Answers match LMTO startlmt.f / inif() prompt order (not always the same
-# wording users remember):
+# Important: `lmt Fe` only passes Fe.lmt to lmto when that file already exists;
+# otherwise the wrapper runs bare lmto, which creates lmt.lmt. So we always
+# `cd ~/R/Fe && lmt` (no arg) after cleaning the case dir.
+#
+# Answers match LMTO startlmt.f / inif() prompt order:
 #   space group → compound → lattice a → nsort → taux → element → ES y/n → grids
 #
 # Fe BCC (sg 229), a = -2.86 Å (negative alat = Angstroms), one Fe at 0 0 0,
@@ -14,20 +17,13 @@
     msg:
       case: "{{ lmto_test_case_dir }}"
       compound: "{{ lmto_test_compound }}"
+      lmt_file: "{{ lmto_test_ini }}"
       space_group: "{{ lmto_test_space_group }}"
       alat: "{{ lmto_test_alat }}"
 
 - name: Ensure ~/R exists before Fe test
   ansible.builtin.file:
     path: "{{ lmto_r_dir }}"
-    state: directory
-    owner: "{{ bootstrap_user }}"
-    group: "{{ bootstrap_group }}"
-    mode: "0755"
-
-- name: Create Fe case directory
-  ansible.builtin.file:
-    path: "{{ lmto_test_case_dir }}"
     state: directory
     owner: "{{ bootstrap_user }}"
     group: "{{ bootstrap_group }}"
@@ -46,17 +42,32 @@
     fail_msg: >-
       {{ bootstrap_home }}/bin/lmt not found. Run --tags lmto-build first.
 
-- name: Run lmt Fe (interactive inif answers via stdin)
+- name: Remove previous Fe case directory
+  ansible.builtin.file:
+    path: "{{ lmto_test_case_dir }}"
+    state: absent
+
+- name: Create clean Fe case directory
+  ansible.builtin.file:
+    path: "{{ lmto_test_case_dir }}"
+    state: directory
+    owner: "{{ bootstrap_user }}"
+    group: "{{ bootstrap_group }}"
+    mode: "0755"
+
+- name: Run lmt in Fe (interactive inif answers via stdin)
   ansible.builtin.shell: |
     set +eu
     if [ -f "{{ lmto_intel_setvars }}" ]; then
       # shellcheck disable=SC1091
       . "{{ lmto_intel_setvars }}" >/dev/null 2>&1 || true
     fi
-    set -euo pipefail
+    set -uo pipefail
     export LSYSTEM="{{ lmto_lsystem }}"
     export HOME="{{ bootstrap_home }}"
     export PATH="{{ bootstrap_home }}/bin:{{ bootstrap_home }}/bin/{{ lmto_lsystem }}:${PATH}"
+    mkdir -p "{{ bootstrap_log_dir }}"
+    logf="{{ bootstrap_log_dir }}/lmt-{{ lmto_test_compound }}.log"
     run_as_user() {
       if [ "$(id -u)" -eq 0 ] && [ "{{ bootstrap_user }}" != root ]; then
         runuser -u "{{ bootstrap_user }}" --preserve-environment -- "$@"
@@ -68,38 +79,45 @@
     #   1 space group  2 compound  3 alat  4 nsort
     #   5 taux tauy tauz  6 element name
     #   7 empty spheres y/n  8 n1 n2 n3 (blank=default)  9 Smin Smax (blank=default)
-    printf '%s\n' \
-      '{{ lmto_test_space_group }}' \
-      '{{ lmto_test_compound }}' \
-      '{{ lmto_test_alat }}' \
-      '{{ lmto_test_nsort }}' \
-      '{{ lmto_test_taux }}' \
-      '{{ lmto_test_element }}' \
-      '{{ lmto_test_empty_spheres }}' \
-      '{{ lmto_test_es_grid }}' \
-      '{{ lmto_test_es_smt }}' \
-      | run_as_user lmt '{{ lmto_test_compound }}'
+    # Bare `lmt` (no arg) → creates lmt.lmt; `lmt Fe` would skip the name until Fe.lmt exists.
+    set +e
+    {
+      printf '# %s  lmt (cwd=%s) → %s\n' "$(date -Iseconds)" "$(pwd)" '{{ lmto_test_ini }}'
+      printf '%s\n' \
+        '{{ lmto_test_space_group }}' \
+        '{{ lmto_test_compound }}' \
+        '{{ lmto_test_alat }}' \
+        '{{ lmto_test_nsort }}' \
+        '{{ lmto_test_taux }}' \
+        '{{ lmto_test_element }}' \
+        '{{ lmto_test_empty_spheres }}' \
+        '{{ lmto_test_es_grid }}' \
+        '{{ lmto_test_es_smt }}' \
+        | run_as_user lmt
+    } 2>&1 | tee -a "${logf}"
+    rc=${PIPESTATUS[0]}
+    set -e
+    exit "${rc}"
   args:
     chdir: "{{ lmto_test_case_dir }}"
     executable: /bin/bash
-    creates: "{{ lmto_test_case_dir }}/{{ lmto_test_compound }}.lmt"
   environment:
     LSYSTEM: "{{ lmto_lsystem }}"
     HOME: "{{ bootstrap_home }}"
 
-- name: Verify Fe.lmt was created
+- name: Verify lmt.lmt was created
   ansible.builtin.stat:
-    path: "{{ lmto_test_case_dir }}/{{ lmto_test_compound }}.lmt"
+    path: "{{ lmto_test_case_dir }}/{{ lmto_test_ini }}"
   register: lmto_fe_lmt
 
-- name: Fail if Fe.lmt missing after lmt
+- name: Fail if lmt.lmt missing after lmt
   ansible.builtin.assert:
     that:
       - lmto_fe_lmt.stat.exists
       - lmto_fe_lmt.stat.size | int > 0
     fail_msg: >-
-      {{ lmto_test_case_dir }}/{{ lmto_test_compound }}.lmt was not created.
-      Check lmt / ifx environment and re-run --tags lmto-test.
+      {{ lmto_test_case_dir }}/{{ lmto_test_ini }} was not created.
+      Check {{ bootstrap_log_dir }}/lmt-{{ lmto_test_compound }}.log and re-run --tags lmto-test.
 
 - name: Reclaim ownership of Fe case dir
   ansible.builtin.file:

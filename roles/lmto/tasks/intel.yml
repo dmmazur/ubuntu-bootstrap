@@ -8,11 +8,21 @@
 
 - name: Install Intel oneAPI GPG keyring
   ansible.builtin.shell: |
-    set -euo pipefail
-    curl -fsSL "{{ intel_oneapi_key_url }}" \
-      | gpg --dearmor -o "{{ intel_oneapi_keyring }}"
+    set -uo pipefail
+    mkdir -p "{{ bootstrap_log_dir }}"
+    logf="{{ bootstrap_log_dir }}/intel-keyring.log"
+    set +e
+    {
+      printf '# %s  curl | gpg --dearmor → %s\n' "$(date -Iseconds)" "{{ intel_oneapi_keyring }}"
+      curl -fsSL "{{ intel_oneapi_key_url }}" \
+        | gpg --dearmor -o "{{ intel_oneapi_keyring }}"
+    } 2>&1 | tee -a "${logf}"
+    rc=${PIPESTATUS[0]}
+    set -e
+    exit "${rc}"
   args:
     creates: "{{ intel_oneapi_keyring }}"
+    executable: /bin/bash
   when: lmto_install_intel_fortran_apt | bool or lmto_install_intel_mkl_apt | bool
 
 - name: Add Intel oneAPI apt source
@@ -22,18 +32,24 @@
     content: "{{ intel_oneapi_repo }}\n"
   when: lmto_install_intel_fortran_apt | bool or lmto_install_intel_mkl_apt | bool
 
-- name: Install Intel Fortran compiler (apt)
-  ansible.builtin.apt:
-    name: "{{ lmto_intel_fortran_package }}"
-    state: present
-    update_cache: true
+- name: Install Intel Fortran compiler (logged)
+  ansible.builtin.include_tasks:
+    file: "{{ playbook_dir }}/tasks/logged_apt_install.yml"
+  vars:
+    logged_apt_name: "apt-{{ lmto_intel_fortran_package }}"
+    logged_apt_packages:
+      - "{{ lmto_intel_fortran_package }}"
+    logged_apt_update: true
   when: lmto_install_intel_fortran_apt | bool
 
-- name: Install Intel oneMKL (apt)
-  ansible.builtin.apt:
-    name: "{{ lmto_intel_mkl_package }}"
-    state: present
-    update_cache: true
+- name: Install Intel oneMKL (logged)
+  ansible.builtin.include_tasks:
+    file: "{{ playbook_dir }}/tasks/logged_apt_install.yml"
+  vars:
+    logged_apt_name: "apt-{{ lmto_intel_mkl_package }}"
+    logged_apt_packages:
+      - "{{ lmto_intel_mkl_package }}"
+    logged_apt_update: true
   when: lmto_install_intel_mkl_apt | bool
 
 - name: Install LMTO profile.d PATH helper

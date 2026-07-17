@@ -1,0 +1,30 @@
+---
+# Logged apt-get install → {{ bootstrap_log_dir }}/{{ logged_apt_name }}.log
+# Required vars:
+#   logged_apt_name      — log basename without .log (e.g. apt-common)
+#   logged_apt_packages  — list of package names
+# Optional:
+#   logged_apt_update    — if true, run apt-get update first (default false)
+
+- name: "apt-get install → log {{ logged_apt_name }}.log"
+  ansible.builtin.shell: |
+    set -uo pipefail
+    mkdir -p "{{ bootstrap_log_dir }}"
+    logf="{{ bootstrap_log_dir }}/{{ logged_apt_name }}.log"
+    pkgs=({{ logged_apt_packages | map('quote') | join(' ') }})
+    set +e
+    {
+      printf '# %s  apt-get install -y %s\n' "$(date -Iseconds)" "${pkgs[*]}"
+      {% if logged_apt_update | default(false) | bool %}
+      DEBIAN_FRONTEND=noninteractive apt-get update
+      {% endif %}
+      DEBIAN_FRONTEND=noninteractive apt-get install -y "${pkgs[@]}"
+    } 2>&1 | tee -a "${logf}"
+    rc=${PIPESTATUS[0]}
+    set -e
+    exit "${rc}"
+  args:
+    executable: /bin/bash
+  register: logged_apt_install_result
+  changed_when: >-
+    '0 upgraded, 0 newly installed' not in (logged_apt_install_result.stdout | default(''))

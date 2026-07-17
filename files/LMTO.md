@@ -9,9 +9,24 @@ Phased install — each step can run alone:
 | 2b R dir | `./scripts/bootstrap-lmto.sh rdir` (`lmto-rdir`) | Create `~/R` for LMTO cases (`lmt` scratch paths) |
 | 3 Build | `./scripts/bootstrap-lmto.sh build` (`lmto-build`) | apt deps, `./configure`, edit `localoptions`, `make` |
 | 4 Xscr | `./scripts/bootstrap-lmto.sh xscr` (`lmto-xscr`) | Copy `SCRIPT/Xscr` → `~/bin/Xscr` + symlink in `~/bin/ifx/` |
-| 5 Test | `./scripts/bootstrap-lmto.sh test` (`lmto-test`) | Create `~/R/Fe`, run `lmt Fe` with BCC Fe answers (sg 229, a=-2.86 Å, ES) |
+| 5 Test | `./scripts/bootstrap-lmto.sh test` (`lmto-test`) | Wipe `~/R/Fe`, run bare `lmt` with BCC Fe answers → `lmt.lmt` |
 | Ownership | `./scripts/bootstrap-lmto.sh ownership` (`lmto-ownership`) | `chown` `~/src` `~/bin` `~/lib` to the login user (also runs after unpack/build even on failure) |
 | All | `./scripts/bootstrap-lmto.sh` (`lmto`) | All enabled phases |
+
+## Command logs
+
+Bootstrap scripts tee console output and heavy commands into a temp directory:
+
+```text
+/tmp/ubuntu-bootstrap.XXXXXX/   # also /tmp/ubuntu-bootstrap-latest
+  playbook.log                  # full ansible-playbook console
+  ansible.log                   # Ansible detail (ANSIBLE_LOG_PATH)
+  apt-*.log                     # apt-get update/install streams
+  configure.log / make.log      # LMTO build
+  lmt-Fe.log                    # Fe smoke test
+```
+
+Override with `BOOTSTRAP_LOG_DIR=/path/to/dir ./scripts/bootstrap-lmto.sh`.
 
 ## Archives (phase 2)
 
@@ -63,7 +78,7 @@ Checks each phase (intel / unpack / rdir / build / xscr / test) against `group_v
 
 ### Fe smoke test (phase 5)
 
-Creates `~/R/Fe` and feeds `lmt Fe` the interactive structure prompts (order from `startlmt.f` `inif`):
+Wipes `~/R/Fe`, then runs bare `lmt` (no filename arg — the wrapper only uses `Fe.lmt` if it already exists) and feeds the interactive structure prompts (order from `startlmt.f` `inif`):
 
 | Prompt | Value |
 |--------|-------|
@@ -74,9 +89,9 @@ Creates `~/R/Fe` and feeds `lmt Fe` the interactive structure prompts (order fro
 | taux tauy tauz | `0 0 0` |
 | Element | `Fe` |
 | Empty spheres | `y` |
-| ES grid / Smin Smax | blank (defaults) |
+| ES grid / Smt min max | blank (defaults) |
 
-Skip with `lmto_run_fe_test: false`, or re-run after deleting `~/R/Fe/Fe.lmt`.
+Success artifact: `~/R/Fe/lmt.lmt`. Skip with `lmto_run_fe_test: false`.
 
 ### Gather setup from another machine
 

@@ -429,11 +429,13 @@ verify_lmto() {
 
   section "lmto-test"
   if [[ "$(yaml_bool lmto_run_fe_test)" == "true" ]]; then
-    local compound
+    local compound ini
     compound="$(yaml_scalar lmto_test_compound)"
+    ini="$(yaml_scalar lmto_test_ini)"
     [[ -z "${compound}" ]] && compound=Fe
+    [[ -z "${ini}" ]] && ini=lmt.lmt
     check_file "Fe case dir" "${HOME_DIR}/R/${compound}"
-    check_file "${compound}.lmt" "${HOME_DIR}/R/${compound}/${compound}.lmt"
+    check_file "${ini}" "${HOME_DIR}/R/${compound}/${ini}"
   else
     skipped "lmto_run_fe_test is false"
   fi

@@ -14,6 +14,10 @@ enable_lab_packages: true
 # Full LMTO stack (phased: intel / unpack / build / xscr — see files/LMTO.md)
 install_lmto: true
 
+# Command logs: scripts/lib.sh sets BOOTSTRAP_LOG_DIR (mktemp under /tmp).
+# Symlink: /tmp/ubuntu-bootstrap-latest → latest run. Per-command files: make.log, apt-*.log, …
+bootstrap_log_dir: "{{ lookup('env', 'BOOTSTRAP_LOG_DIR') | default('/tmp/ubuntu-bootstrap-manual', true) }}"
+
 # --- apt: baseline desktop/dev tools ---
 apt_packages_common:
   - apt-file
@@ -125,8 +129,11 @@ lmto_run_fe_test: true
 # Case/work directory used by lmt (path must contain /R/ for scratch naming)
 lmto_r_dir: "{{ bootstrap_home }}/R"
 
-# Fe smoke test (tag lmto-test) — answers for startlmt.f inif() prompts
+# Fe smoke test (tag lmto-test) — answers for startlmt.f inif() prompts.
+# Wipes ~/R/Fe each run; bare `lmt` writes default lmt.lmt
+# (wrapper only uses Fe.lmt if that file already exists).
 lmto_test_case_dir: "{{ lmto_r_dir }}/Fe"
+lmto_test_ini: lmt.lmt
 lmto_test_compound: Fe
 lmto_test_space_group: "229"
 lmto_test_alat: "-2.86"

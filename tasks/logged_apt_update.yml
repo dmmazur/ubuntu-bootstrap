@@ -1,0 +1,21 @@
+---
+# Logged apt-get update → {{ bootstrap_log_dir }}/{{ logged_apt_name | default('apt-update') }}.log
+# Optional vars: logged_apt_name (default apt-update)
+
+- name: "apt-get update → log {{ logged_apt_name | default('apt-update') }}.log"
+  ansible.builtin.shell: |
+    set -uo pipefail
+    mkdir -p "{{ bootstrap_log_dir }}"
+    logf="{{ bootstrap_log_dir }}/{{ logged_apt_name | default('apt-update') }}.log"
+    set +e
+    {
+      printf '# %s  apt-get update\n' "$(date -Iseconds)"
+      DEBIAN_FRONTEND=noninteractive apt-get update
+    } 2>&1 | tee -a "${logf}"
+    rc=${PIPESTATUS[0]}
+    set -e
+    exit "${rc}"
+  args:
+    executable: /bin/bash
+  register: logged_apt_update_result
+  changed_when: true
