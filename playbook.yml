@@ -207,13 +207,13 @@
       ansible.builtin.debug:
         msg: "LMTO role: LSYSTEM={{ lmto_lsystem }}, src={{ lmto_src_dir }}"
       when: install_lmto | bool
-      tags: [lmto, lmto-intel, lmto-unpack, lmto-build, lmto-xscr, lmto-ownership]
+      tags: [lmto, lmto-intel, lmto-unpack, lmto-build, lmto-xscr, lmto-ownership, lmto-rdir, lmto-test]
 
     - name: Install LMTO and prerequisites
       ansible.builtin.include_role:
         name: lmto
       when: install_lmto | bool
-      tags: [lmto, lmto-intel, lmto-unpack, lmto-build, lmto-xscr, lmto-ownership]
+      tags: [lmto, lmto-intel, lmto-unpack, lmto-build, lmto-xscr, lmto-ownership, lmto-rdir, lmto-test]
 
     # Local .debs last (disabled by default). Only enter this section when enabled.
     - name: Install local .deb packages from files/

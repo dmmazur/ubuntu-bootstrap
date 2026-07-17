@@ -420,6 +420,24 @@ verify_lmto() {
     skipped "lmto_install_xscr is false"
   fi
 
+  section "lmto-rdir"
+  if [[ "$(yaml_bool lmto_create_r_dir)" == "true" ]]; then
+    check_file "LMTO cases dir ~/R" "${HOME_DIR}/R"
+  else
+    skipped "lmto_create_r_dir is false"
+  fi
+
+  section "lmto-test"
+  if [[ "$(yaml_bool lmto_run_fe_test)" == "true" ]]; then
+    local compound
+    compound="$(yaml_scalar lmto_test_compound)"
+    [[ -z "${compound}" ]] && compound=Fe
+    check_file "Fe case dir" "${HOME_DIR}/R/${compound}"
+    check_file "${compound}.lmt" "${HOME_DIR}/R/${compound}/${compound}.lmt"
+  else
+    skipped "lmto_run_fe_test is false"
+  fi
+
   # Convenience symlinks — only expected when target exists
   section "lmto home symlinks"
   _check_optional_symlink() {

@@ -70,8 +70,10 @@ Section banners (`>>> COMMON`, …) and per-package task names show progress.
 | `./scripts/bootstrap-lmto.sh` | LMTO (all phases) |
 | `./scripts/bootstrap-lmto.sh intel` | Intel apt + bashrc only |
 | `./scripts/bootstrap-lmto.sh unpack` | `~/src` + unpack archives |
+| `./scripts/bootstrap-lmto.sh rdir` | Create `~/R` (LMTO cases) |
 | `./scripts/bootstrap-lmto.sh build` | configure + make |
 | `./scripts/bootstrap-lmto.sh xscr` | copy Xscr |
+| `./scripts/bootstrap-lmto.sh test` | Fe smoke test: `~/R/Fe` + `lmt Fe` |
 | `./scripts/bootstrap-lmto.sh ownership` | chown `~/src` `~/bin` `~/lib` → login user |
 | `./scripts/bootstrap-flatpak.sh` | Flatpak (`install_flatpak`, currently off) |
 | `./scripts/bootstrap-ollama.sh` | Ollama (`install_ollama`, currently off) |
@@ -143,8 +145,11 @@ Writes `~/Downloads/lmto-setup-report-*.txt`. Copy `~/src` separately via rsync.
 | `lmto` | Full LMTO stack (all phases below) |
 | `lmto-intel` | Intel oneAPI apt + `~/.bashrc` LSYSTEM/setvars |
 | `lmto-unpack` | Create `~/src`, unpack base + patch archives |
+| `lmto-rdir` | Create `~/R` for LMTO cases |
 | `lmto-build` | apt deps, configure, localoptions, make |
 | `lmto-xscr` | Copy `SCRIPT/Xscr` → `~/bin` + `~/bin/ifx` |
+| `lmto-test` | Fe case: `~/R/Fe` + interactive `lmt Fe` structure setup |
+| `lmto-ownership` | chown LMTO home paths to login user |
 
 Examples:
 
@@ -181,8 +186,10 @@ Defaults match the AIR workstation: **`LSYSTEM=ifx`**, archives → configure/ma
 ```bash
 ./scripts/bootstrap-lmto.sh intel    # 1) Intel repo + ifx/MKL + bashrc
 ./scripts/bootstrap-lmto.sh unpack   # 2) ~/src + lmto5.04.6(.p).tar.gz
+./scripts/bootstrap-lmto.sh rdir     # 2b) ~/R (cases for lmt)
 ./scripts/bootstrap-lmto.sh build    # 3) configure + make
 ./scripts/bootstrap-lmto.sh xscr     # 4) SCRIPT/Xscr → ~/bin
+./scripts/bootstrap-lmto.sh test     # 5) ~/R/Fe + lmt Fe
 # or all:
 ./scripts/bootstrap-lmto.sh
 ./scripts/verify-lmto.sh

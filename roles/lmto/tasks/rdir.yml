@@ -1,0 +1,15 @@
+---
+# Create ~/R for LMTO cases (lmt scratch naming strips path after /R/).
+# Tag: lmto-rdir
+
+- name: ">>> RDIR — create {{ lmto_r_dir }}"
+  ansible.builtin.debug:
+    msg: "LMTO case directory for lmt/orx work"
+
+- name: Create LMTO R (cases) directory
+  ansible.builtin.file:
+    path: "{{ lmto_r_dir }}"
+    state: directory
+    owner: "{{ bootstrap_user }}"
+    group: "{{ bootstrap_group }}"
+    mode: "0755"

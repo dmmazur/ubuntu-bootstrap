@@ -2,20 +2,24 @@
 # LMTO phases (run separately via tags or bootstrap-lmto.sh <phase>):
 #   lmto-intel  — Intel apt repo + ifx/MKL + bashrc/profile.d
 #   lmto-unpack — ~/src + unpack base then patch archives
+#   lmto-rdir   — create ~/R (cases)
 #   lmto-build  — apt deps, configure, localoptions, make
 #   lmto-xscr   — copy SCRIPT/Xscr → ~/bin + ~/bin/$LSYSTEM
+#   lmto-test   — ~/R/Fe + lmt Fe structure setup (smoke test)
 # Full: --tags lmto
 
-- name: ">>> LMTO role — phases intel / unpack / build / xscr"
+- name: ">>> LMTO role — phases intel / unpack / rdir / build / xscr / test"
   ansible.builtin.debug:
     msg:
       src: "{{ lmto_src_dir }}"
       lsystem: "{{ lmto_lsystem }}"
       intel: "{{ lmto_install_intel }}"
       unpack: "{{ lmto_unpack_archives }}"
+      rdir: "{{ lmto_create_r_dir }}"
       build: "{{ lmto_build }}"
       xscr: "{{ lmto_install_xscr }}"
-  tags: [lmto, lmto-intel, lmto-unpack, lmto-build, lmto-xscr]
+      fe_test: "{{ lmto_run_fe_test }}"
+  tags: [lmto, lmto-intel, lmto-unpack, lmto-rdir, lmto-build, lmto-xscr, lmto-test]
 
 - name: Include Intel oneAPI phase
   ansible.builtin.include_tasks:
@@ -33,6 +37,14 @@
   when: lmto_unpack_archives | bool
   tags: [lmto, lmto-unpack]
 
+- name: Include create ~/R (cases) phase
+  ansible.builtin.include_tasks:
+    file: rdir.yml
+    apply:
+      tags: [lmto, lmto-rdir]
+  when: lmto_create_r_dir | bool
+  tags: [lmto, lmto-rdir]
+
 - name: Include configure/make phase
   ansible.builtin.include_tasks:
     file: build.yml
@@ -48,6 +60,14 @@
       tags: [lmto, lmto-xscr]
   when: lmto_install_xscr | bool
   tags: [lmto, lmto-xscr]
+
+- name: Include Fe smoke test (lmt structure setup)
+  ansible.builtin.include_tasks:
+    file: test.yml
+    apply:
+      tags: [lmto, lmto-test]
+  when: lmto_run_fe_test | bool
+  tags: [lmto, lmto-test]
 
 - name: Fix ownership of LMTO home paths only
   ansible.builtin.include_tasks:

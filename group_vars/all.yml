@@ -100,7 +100,7 @@ chrome_repo: >-
 ollama_tarball_url: https://ollama.com/download/ollama-linux-amd64.tar.zst
 
 # =============================================================================
-# LMTO — phases (tags): lmto-intel | lmto-unpack | lmto-build | lmto-xscr
+# LMTO — phases (tags): lmto-intel | lmto-unpack | lmto-rdir | lmto-build | lmto-xscr | lmto-test
 # Full stack: tag lmto   Reference: AIR install (LSYSTEM=ifx)
 # =============================================================================
 
@@ -119,6 +119,23 @@ lmto_install_intel: true
 lmto_unpack_archives: true
 lmto_build: true
 lmto_install_xscr: true
+lmto_create_r_dir: true
+lmto_run_fe_test: true
+
+# Case/work directory used by lmt (path must contain /R/ for scratch naming)
+lmto_r_dir: "{{ bootstrap_home }}/R"
+
+# Fe smoke test (tag lmto-test) — answers for startlmt.f inif() prompts
+lmto_test_case_dir: "{{ lmto_r_dir }}/Fe"
+lmto_test_compound: Fe
+lmto_test_space_group: "229"
+lmto_test_alat: "-2.86"
+lmto_test_nsort: "1"
+lmto_test_taux: "0 0 0"
+lmto_test_element: Fe
+lmto_test_empty_spheres: "y"
+lmto_test_es_grid: ""
+lmto_test_es_smt: ""
 
 # LSYSTEM selects ~/bin/$LSYSTEM and ~/lib/$LSYSTEM (AIR: ifx, not uname/Linux)
 lmto_lsystem: ifx

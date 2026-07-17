@@ -7,9 +7,11 @@ set -euo pipefail
 #   ./scripts/bootstrap-lmto.sh all
 #   ./scripts/bootstrap-lmto.sh intel        # 1) Intel apt + bashrc
 #   ./scripts/bootstrap-lmto.sh unpack       # 2) ~/src + unpack archives
+#   ./scripts/bootstrap-lmto.sh rdir         # 2b) create ~/R (cases)
 #   ./scripts/bootstrap-lmto.sh build        # 3) configure + make
 #   ./scripts/bootstrap-lmto.sh xscr         # 4) copy Xscr
-#   ./scripts/bootstrap-lmto.sh ownership    # chown ~/src ~/bin ~/lib → login user
+#   ./scripts/bootstrap-lmto.sh test         # 5) Fe case: ~/R/Fe + lmt Fe
+#   ./scripts/bootstrap-lmto.sh ownership    # chown ~/src ~/bin ~/lib ~/R → login user
 #
 # Extra args after the phase are passed to ansible-playbook, e.g.:
 #   ./scripts/bootstrap-lmto.sh intel --check
@@ -20,7 +22,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 phase="all"
 if [[ $# -gt 0 ]]; then
   case "$1" in
-    all|intel|unpack|build|xscr|ownership)
+    all|intel|unpack|rdir|build|xscr|test|ownership)
       phase="$1"
       shift
       ;;
@@ -31,8 +33,10 @@ case "${phase}" in
   all)       tags="lmto" ;;
   intel)     tags="lmto-intel" ;;
   unpack)    tags="lmto-unpack" ;;
+  rdir)      tags="lmto-rdir" ;;
   build)     tags="lmto-build" ;;
   xscr)      tags="lmto-xscr" ;;
+  test)      tags="lmto-test" ;;
   ownership) tags="lmto-ownership" ;;
 esac
 

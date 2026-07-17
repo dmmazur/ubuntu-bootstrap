@@ -15,6 +15,7 @@
     - "{{ lmto_src_dir }}"
     - "{{ bootstrap_home }}/bin"
     - "{{ bootstrap_home }}/lib"
+    - "{{ lmto_r_dir }}"
   when: item is exists
   failed_when: false
   tags:
@@ -23,3 +24,5 @@
     - lmto-unpack
     - lmto-build
     - lmto-xscr
+    - lmto-rdir
+    - lmto-test
