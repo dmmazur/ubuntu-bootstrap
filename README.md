@@ -24,7 +24,7 @@ cd ubuntu-bootstrap
 
 Optional before running:
 
-- LMTO source tree at `~/src` (see [`files/LMTO.md`](files/LMTO.md))
+- LMTO archives `lmto5.04.6.tar.gz` + `lmto5.04.6p.tar.gz` in `files/` (or `~/Downloads` / `~/src`) — see [`files/LMTO.md`](files/LMTO.md)
 - Cursor / VeraCrypt `.deb` files in `files/` only if you set `install_debs: true`
 
 Verbose Ansible output: `BOOTSTRAP_VERBOSE=1 ./bootstrap.sh`
@@ -67,7 +67,11 @@ Section banners (`>>> COMMON`, …) and per-package task names show progress.
 | `./scripts/bootstrap-debs.sh` | Cursor, VeraCrypt `.debs` (`install_debs`, currently off) |
 | `./scripts/bootstrap-claude.sh` | Claude Desktop |
 | `./scripts/bootstrap-chrome.sh` | Google Chrome |
-| `./scripts/bootstrap-lmto.sh` | LMTO + Intel apt |
+| `./scripts/bootstrap-lmto.sh` | LMTO (all phases) |
+| `./scripts/bootstrap-lmto.sh intel` | Intel apt + bashrc only |
+| `./scripts/bootstrap-lmto.sh unpack` | `~/src` + unpack archives |
+| `./scripts/bootstrap-lmto.sh build` | configure + make |
+| `./scripts/bootstrap-lmto.sh xscr` | copy Xscr |
 | `./scripts/bootstrap-flatpak.sh` | Flatpak (`install_flatpak`, currently off) |
 | `./scripts/bootstrap-ollama.sh` | Ollama (`install_ollama`, currently off) |
 
@@ -135,7 +139,11 @@ Writes `~/Downloads/lmto-setup-report-*.txt`. Copy `~/src` separately via rsync.
 | `claude` | Claude Desktop apt repo + package |
 | `chrome` | Google Chrome apt repo + package |
 | `ollama` | Ollama tarball + systemd (`install_ollama`, currently off) |
-| `lmto` | LMTO stack: apt deps, Intel oneAPI, env, NFS, configure/make |
+| `lmto` | Full LMTO stack (all phases below) |
+| `lmto-intel` | Intel oneAPI apt + `~/.bashrc` LSYSTEM/setvars |
+| `lmto-unpack` | Create `~/src`, unpack base + patch archives |
+| `lmto-build` | apt deps, configure, localoptions, make |
+| `lmto-xscr` | Copy `SCRIPT/Xscr` → `~/bin` + `~/bin/ifx` |
 
 Examples:
 
@@ -165,23 +173,21 @@ BOOTSTRAP_VERBOSE=1 ./scripts/bootstrap-snaps.sh
 
 ## LMTO
 
-Separate step (`install_lmto: true`, tag `lmto`). See [`files/LMTO.md`](files/LMTO.md).
+Separate phased step (`install_lmto: true`). See [`files/LMTO.md`](files/LMTO.md).
 
-- **Source:** already at `~/src` (copy, rsync, or symlink from the other machine)
-- **Intel:** apt via Intel oneAPI repo — `intel-oneapi-compiler-fortran` + `intel-oneapi-mkl-devel`
-- Then: apt deps → oneAPI → env → optional NFS → `./configure` + `make` in `~/src`
-- **NFS** (`lmto_nfs_enable`) defaults to **false** — `/dep24` home symlinks are created only when those targets exist
+Defaults match the AIR workstation: **`LSYSTEM=ifx`**, archives → configure/make → Xscr.
 
 ```bash
+./scripts/bootstrap-lmto.sh intel    # 1) Intel repo + ifx/MKL + bashrc
+./scripts/bootstrap-lmto.sh unpack   # 2) ~/src + lmto5.04.6(.p).tar.gz
+./scripts/bootstrap-lmto.sh build    # 3) configure + make
+./scripts/bootstrap-lmto.sh xscr     # 4) SCRIPT/Xscr → ~/bin
+# or all:
 ./scripts/bootstrap-lmto.sh
 ./scripts/verify-lmto.sh
-
-# Or Ansible directly:
-sudo --preserve-env=HOME \
-  ansible-playbook playbook.yml --tags lmto -e ansible_become=false
-
-# Prep only (no compile): set lmto_build: false in group_vars
 ```
+
+Place `lmto5.04.6.tar.gz` and `lmto5.04.6p.tar.gz` in `files/`, `~/Downloads/`, or `~/src/` before unpack.
 
 ## Local `.deb` downloads
 

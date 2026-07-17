@@ -242,17 +242,17 @@
       when: install_ollama | bool
       tags: [ollama]
 
-    - name: ">>> LMTO — source {{ lmto_src_dir }}"
+    - name: ">>> LMTO — phased install (intel / unpack / build / xscr)"
       ansible.builtin.debug:
-        msg: "Running LMTO role (Intel from files/, build from ~/src)"
+        msg: "LMTO role: LSYSTEM={{ lmto_lsystem }}, src={{ lmto_src_dir }}"
       when: install_lmto | bool
-      tags: [lmto]
+      tags: [lmto, lmto-intel, lmto-unpack, lmto-build, lmto-xscr]
 
     - name: Install LMTO and prerequisites
       ansible.builtin.include_role:
         name: lmto
       when: install_lmto | bool
-      tags: [lmto]
+      tags: [lmto, lmto-intel, lmto-unpack, lmto-build, lmto-xscr]
 
   handlers:
     - name: Restart ollama

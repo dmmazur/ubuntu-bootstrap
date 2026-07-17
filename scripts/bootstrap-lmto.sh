@@ -1,7 +1,39 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# LMTO: Intel apt + env + build from ~/src (see files/LMTO.md)
+# LMTO phased install (AIR layout: LSYSTEM=ifx).
+#
+# Usage:
+#   ./scripts/bootstrap-lmto.sh              # all phases
+#   ./scripts/bootstrap-lmto.sh all
+#   ./scripts/bootstrap-lmto.sh intel        # 1) Intel apt + bashrc
+#   ./scripts/bootstrap-lmto.sh unpack       # 2) ~/src + unpack archives
+#   ./scripts/bootstrap-lmto.sh build        # 3) configure + make
+#   ./scripts/bootstrap-lmto.sh xscr         # 4) copy Xscr
+#
+# Extra args after the phase are passed to ansible-playbook, e.g.:
+#   ./scripts/bootstrap-lmto.sh intel --check
+#
 # shellcheck source=lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+
+phase="all"
+if [[ $# -gt 0 ]]; then
+  case "$1" in
+    all|intel|unpack|build|xscr)
+      phase="$1"
+      shift
+      ;;
+  esac
+fi
+
+case "${phase}" in
+  all)    tags="lmto" ;;
+  intel)  tags="lmto-intel" ;;
+  unpack) tags="lmto-unpack" ;;
+  build)  tags="lmto-build" ;;
+  xscr)   tags="lmto-xscr" ;;
+esac
+
 ensure_prerequisites
-run_playbook lmto "$@"
+log "LMTO phase: ${phase} (ansible --tags ${tags})"
+run_playbook "${tags}" "$@"

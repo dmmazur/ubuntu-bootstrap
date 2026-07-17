@@ -11,7 +11,7 @@ install_flatpak: false
 install_debs: false
 # Lab/scientific extras (NFS, PostScript viewer, terminals, etc.)
 enable_lab_packages: true
-# Full LMTO stack: apt deps, Intel oneAPI (if installers present), env, build
+# Full LMTO stack (phased: intel / unpack / build / xscr — see files/LMTO.md)
 install_lmto: true
 
 # --- apt: baseline desktop/dev tools ---
@@ -100,38 +100,38 @@ chrome_repo: >-
 ollama_tarball_url: https://ollama.com/download/ollama-linux-amd64.tar.zst
 
 # =============================================================================
-# LMTO (separate step — tag: lmto)
-# Reference: ~/Downloads/lmto-machine-reference.txt (working workstation dump)
+# LMTO — phases (tags): lmto-intel | lmto-unpack | lmto-build | lmto-xscr
+# Full stack: tag lmto   Reference: AIR install (LSYSTEM=ifx)
 # =============================================================================
 
-# Source tree must already exist (copy/rsync/symlink from the other machine).
-# Expected layout matches working box: ~/src with configure, MAK/, LMTO/, …
 # Prefer login user home when playbook is run via sudo --preserve-env=HOME
 bootstrap_home: "{{ ansible_facts['env']['HOME'] | default(lookup('env', 'HOME'), true) }}"
 bootstrap_user: "{{ lookup('env', 'SUDO_USER') | default(ansible_facts['user_id'], true) }}"
 lmto_src_dir: "{{ bootstrap_home }}/src"
 
-# LSYSTEM selects ~/bin/$LSYSTEM and ~/lib/$LSYSTEM (see Readme.1st)
-lmto_lsystem: Linux
+# Phase toggles (also runnable separately via tags / bootstrap-lmto.sh <phase>)
+lmto_install_intel: true
+lmto_unpack_archives: true
+lmto_build: true
+lmto_install_xscr: true
 
-# Working machine: SYSMAK=.../MAK/ifx_mkl.mak
+# LSYSTEM selects ~/bin/$LSYSTEM and ~/lib/$LSYSTEM (AIR: ifx, not uname/Linux)
+lmto_lsystem: ifx
+
+# Makefile after unpacking patch (MAK/ifx_mkl.mak comes from lmto*.p.tar.gz)
 lmto_makefile_intel: ifx_mkl.mak
 lmto_makefile_gfortran: gfortran.mak
 
-# Match localoptions FFLAGS (... -xHost) from working machine
-lmto_enable_xhost: true
+# Extra FFLAGS appended in OBJ/$LSYSTEM/localoptions (AIR: -xHost -debug all -g -traceback)
+lmto_fflags_extra: "-xHost -debug all -g -traceback"
 
-# Intel oneAPI — Fortran + MKL via apt (same repo as Intel download pages)
-lmto_install_intel: true
+# --- Phase 1: Intel oneAPI apt ---
 lmto_install_intel_fortran_apt: true
 lmto_install_intel_mkl_apt: true
-lmto_install_intel_fortran_offline: false
-lmto_install_intel_mkl_offline: false
 lmto_intel_fortran_package: intel-oneapi-compiler-fortran
-# devel: headers/libs for compiling LMTO with ifx_mkl.mak (-qmkl)
-lmto_intel_mkl_package: intel-oneapi-mkl-devel
+# AIR used runtime intel-oneapi-mkl (sufficient with -qmkl + setvars)
+lmto_intel_mkl_package: intel-oneapi-mkl
 
-# Intel apt repository (https://apt.repos.intel.com/oneapi)
 intel_oneapi_key_url: https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
 intel_oneapi_keyring: /usr/share/keyrings/oneapi-archive-keyring.gpg
 intel_oneapi_list: /etc/apt/sources.list.d/oneAPI.list
@@ -141,18 +141,35 @@ intel_oneapi_repo: >-
 
 lmto_intel_setvars: /opt/intel/oneapi/setvars.sh
 
-# World-writable build scratch (as used in prior workstation setup)
+# Shell env (AIR: last two lines of ~/.bashrc)
+lmto_profile_script: /etc/profile.d/lmto.sh
+lmto_ensure_bashrc_lsystem: true
+lmto_ensure_bashrc_setvars: true
+# Optional legacy: also source setvars from ~/.profile (AIR did not)
+lmto_ensure_user_profile_setvars: false
+
+# --- Phase 2: create ~/src + unpack archives ---
+# Drop archives in files/ and/or already in ~/src. Copied from files/ first if present.
+lmto_archive_base: lmto5.04.6.tar.gz
+lmto_archive_patch: lmto5.04.6p.tar.gz
+lmto_archive_src_dirs:
+  - "{{ playbook_dir }}/files"
+  - "{{ bootstrap_home }}/Downloads"
+  - "{{ bootstrap_home }}/src"
+
+# --- Phase 3: configure + make ---
+lmto_scratch_enable: false
 lmto_scratch_dir: /scratch
 lmto_scratch_mode: "0777"
+lmto_make_jobs: "{{ ansible_processor_vcpus | default(4) }}"
 
-# Optional institute NFS — working fstab used defaults,soft,vers=4.2,_netdev
+# Optional institute NFS (AIR: off)
 lmto_nfs_enable: false
 lmto_nfs_source: "pam254:/dep24"
 lmto_nfs_path: /dep24
 lmto_nfs_opts: "defaults,soft,vers=4.2,_netdev"
 lmto_nfs_fstab: true
 
-# Convenience symlinks into the home directory (created only if targets exist)
 lmto_home_symlinks:
   - src: /dep24
     dest: "{{ bootstrap_home }}/dep24"
@@ -161,9 +178,6 @@ lmto_home_symlinks:
   - src: /dep24/dmazur/TeX
     dest: "{{ bootstrap_home }}/TeX_dep24"
 
-# Shell environment: profile.d + ensure ~/.profile sources setvars (as on working box)
-lmto_profile_script: /etc/profile.d/lmto.sh
-lmto_ensure_user_profile_setvars: true
-
-# Run ./configure + make (set false to only prepare deps/env)
-lmto_build: true
+# --- Phase 4: Xscr ---
+# Copy SCRIPT/Xscr → ~/bin/Xscr and symlink ~/bin/$LSYSTEM/Xscr
+lmto_xscr_src: "{{ lmto_src_dir }}/SCRIPT/Xscr"

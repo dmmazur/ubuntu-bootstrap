@@ -1,0 +1,73 @@
+---
+# Phase 1: Intel oneAPI apt repo, compiler, MKL, shell env
+# Tag: lmto-intel
+
+- name: ">>> INTEL — apt repository, packages, bashrc"
+  ansible.builtin.debug:
+    msg: "Intel Fortran={{ lmto_intel_fortran_package }} MKL={{ lmto_intel_mkl_package }}"
+
+- name: Install Intel oneAPI GPG keyring
+  ansible.builtin.shell: |
+    set -euo pipefail
+    curl -fsSL "{{ intel_oneapi_key_url }}" \
+      | gpg --dearmor -o "{{ intel_oneapi_keyring }}"
+  args:
+    creates: "{{ intel_oneapi_keyring }}"
+  when: lmto_install_intel_fortran_apt | bool or lmto_install_intel_mkl_apt | bool
+
+- name: Add Intel oneAPI apt source
+  ansible.builtin.copy:
+    dest: "{{ intel_oneapi_list }}"
+    mode: "0644"
+    content: "{{ intel_oneapi_repo }}\n"
+  when: lmto_install_intel_fortran_apt | bool or lmto_install_intel_mkl_apt | bool
+
+- name: Install Intel Fortran compiler (apt)
+  ansible.builtin.apt:
+    name: "{{ lmto_intel_fortran_package }}"
+    state: present
+    update_cache: true
+  when: lmto_install_intel_fortran_apt | bool
+
+- name: Install Intel oneMKL (apt)
+  ansible.builtin.apt:
+    name: "{{ lmto_intel_mkl_package }}"
+    state: present
+    update_cache: true
+  when: lmto_install_intel_mkl_apt | bool
+
+- name: Install LMTO profile.d PATH helper
+  ansible.builtin.template:
+    src: lmto.sh.j2
+    dest: "{{ lmto_profile_script }}"
+    mode: "0644"
+
+- name: Ensure ~/.bashrc exports LSYSTEM (AIR: export LSYSTEM=ifx)
+  ansible.builtin.lineinfile:
+    path: "{{ bootstrap_home }}/.bashrc"
+    line: "export LSYSTEM={{ lmto_lsystem }}"
+    regexp: '^\s*export\s+LSYSTEM='
+    create: true
+    owner: "{{ bootstrap_user }}"
+  become: false
+  when: lmto_ensure_bashrc_lsystem | bool
+
+- name: Ensure ~/.bashrc sources Intel setvars (AIR last lines)
+  ansible.builtin.lineinfile:
+    path: "{{ bootstrap_home }}/.bashrc"
+    line: "source {{ lmto_intel_setvars }}"
+    regexp: '^\s*(source|\.)\s+.*/setvars\.sh'
+    create: true
+    owner: "{{ bootstrap_user }}"
+  become: false
+  when: lmto_ensure_bashrc_setvars | bool
+
+- name: Ensure ~/.profile sources Intel setvars (optional)
+  ansible.builtin.lineinfile:
+    path: "{{ bootstrap_home }}/.profile"
+    line: "source {{ lmto_intel_setvars }}"
+    regexp: '^\s*(source|\.)\s+.*/setvars\.sh'
+    create: true
+    owner: "{{ bootstrap_user }}"
+  become: false
+  when: lmto_ensure_user_profile_setvars | bool

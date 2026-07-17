@@ -1,88 +1,64 @@
-# LMTO setup inputs
+# LMTO setup (AIR layout: `LSYSTEM=ifx`)
 
-## 1. Source tree → `~/src`
+Phased install — each step can run alone:
 
-Provide the LMTO package by **copy, rsync, or symlink** from the other machine
-(working path was `/home/dmazur/src`). The playbook expects:
+| Phase | Script / tag | What it does |
+|-------|--------------|--------------|
+| 1 Intel | `./scripts/bootstrap-lmto.sh intel` (`lmto-intel`) | Intel apt repo, `ifx`, MKL, `~/.bashrc` (`LSYSTEM` + `setvars`), `/etc/profile.d/lmto.sh` |
+| 2 Unpack | `./scripts/bootstrap-lmto.sh unpack` (`lmto-unpack`) | Create `~/src`, unpack base then patch archives |
+| 3 Build | `./scripts/bootstrap-lmto.sh build` (`lmto-build`) | apt deps, `./configure`, edit `localoptions`, `make` |
+| 4 Xscr | `./scripts/bootstrap-lmto.sh xscr` (`lmto-xscr`) | Copy `SCRIPT/Xscr` → `~/bin/Xscr` + symlink in `~/bin/ifx/` |
+| All | `./scripts/bootstrap-lmto.sh` (`lmto`) | All enabled phases |
+
+## Archives (phase 2)
+
+Place both tarballs in `files/`, `~/Downloads/`, or `~/src/`:
 
 ```text
-~/src/configure
-~/src/MAK/          # includes ifx_mkl.mak
-~/src/LMTO/
-~/src/Readme.1st
-…
+lmto5.04.6.tar.gz     # base
+lmto5.04.6p.tar.gz    # patch (includes MAK/ifx_mkl.mak)
 ```
 
-Examples:
+Unpack order matches `Readme.1st`: base first, patch second.
 
-```bash
-# rsync over ssh
-rsync -aH --info=progress2 dmazur@other-host:~/src/ ~/src/
-
-# or NFS symlink if the share is mounted
-ln -s /dep24/dmazur/src ~/src   # only if that path exists on NFS
-```
-
-Do **not** put the tree under `ubuntu-bootstrap/` unless you change `lmto_src_dir` in `group_vars/all.yml`.
-
-## 2. Intel oneAPI (apt)
-
-The playbook adds Intel’s apt repo and installs:
+## Intel oneAPI (phase 1)
 
 | Package | Purpose |
 |---------|---------|
-| `intel-oneapi-compiler-fortran` | `ifx` Fortran compiler |
-| `intel-oneapi-mkl-devel` | MKL for **building** LMTO (`ifx_mkl.mak`, `-qmkl`) |
+| `intel-oneapi-compiler-fortran` | `ifx` |
+| `intel-oneapi-mkl` | MKL (`-qmkl` via setvars) — matches AIR |
 
-Runtime-only MKL (`intel-oneapi-mkl`) is not used — compile needs `-devel`.
-
-Repo setup (automatic):  
-https://www.intel.com/content/www/us/en/docs/oneapi/installation-guide-linux/2025-0/apt-001.html
-
-Manual equivalent:
+`~/.bashrc` gets (AIR last two lines):
 
 ```bash
-wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
-  | gpg --dearmor | sudo tee /usr/share/keyrings/oneapi-archive-keyring.gpg > /dev/null
-echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" \
-  | sudo tee /etc/apt/sources.list.d/oneAPI.list
-sudo apt update
-sudo apt install intel-oneapi-compiler-fortran intel-oneapi-mkl-devel
+export LSYSTEM=ifx
 source /opt/intel/oneapi/setvars.sh
 ```
 
-No offline `*offline.sh` installers in `files/` are required.
+## Build defaults (`group_vars/all.yml`)
 
-## 3. NFS and home symlinks
+| Setting | Value |
+|---------|-------|
+| `lmto_lsystem` | `ifx` |
+| `lmto_makefile_intel` | `ifx_mkl.mak` |
+| `lmto_fflags_extra` | `-xHost -debug all -g -traceback` |
+| Output | `~/bin/ifx`, `~/lib/ifx` |
 
-| Setting | Default | Effect |
-|---------|---------|--------|
-| `lmto_nfs_enable` | `false` | Mount `pam254:/dep24` → `/dep24` and write fstab when true |
-| Home links | always attempted | `~/dep24`, `~/R_dep24`, `~/TeX_dep24` — created **only if** the link target already exists |
+## NFS
 
-With NFS off and `/dep24` absent, those symlinks are skipped (verify reports SKIP, not failure).
+`lmto_nfs_enable` defaults to **false**. When true, mounts `pam254:/dep24` and creates home links if targets exist.
 
-## 4. Run / verify
+## Verify
 
 ```bash
-# Preferred
-./scripts/bootstrap-lmto.sh
 ./scripts/verify-lmto.sh
-
-# Or Ansible directly (after ~/src is in place):
-sudo --preserve-env=HOME \
-  ansible-playbook playbook.yml --tags lmto -e ansible_become=false
-
-# Prep only (no compile): set lmto_build: false in group_vars/all.yml
 ```
 
-`verify-lmto.sh` checks Intel apt packages, `setvars`, `~/src/configure`, `~/bin` / `~/bin/Linux/lmto`, profile, scratch, optional symlinks, and NFS when enabled.
+Checks each phase (intel / unpack / build / xscr) against `group_vars`.
 
-### Gather setup from the old machine
+### Gather setup from another machine
 
 ```bash
 ./scripts/gather-lmto-setup.sh
 ./scripts/gather-lmto-setup.sh --archive
 ```
-
-Collects `systemoptions`, `localoptions`, Intel oneAPI layout, NFS fstab, `~/bin`/`~/lib`, and `lmt` — not install steps from bash history.

@@ -1,0 +1,51 @@
+---
+# Phase 4: install prebuilt Xscr (AIR: ~/bin/Xscr + ~/bin/ifx/Xscr symlink)
+# Tag: lmto-xscr
+
+- name: ">>> XSCR — install prebuilt viewer from SCRIPT/Xscr"
+  ansible.builtin.debug:
+    msg:
+      src: "{{ lmto_xscr_src }}"
+      scripts_bin: "{{ bootstrap_home }}/bin/Xscr"
+      sysbin: "{{ bootstrap_home }}/bin/{{ lmto_lsystem }}/Xscr"
+
+- name: Require SCRIPT/Xscr
+  ansible.builtin.stat:
+    path: "{{ lmto_xscr_src }}"
+  register: lmto_xscr_stat
+
+- name: Fail if SCRIPT/Xscr is missing
+  ansible.builtin.assert:
+    that:
+      - lmto_xscr_stat.stat.exists
+    fail_msg: >-
+      {{ lmto_xscr_src }} not found. Run --tags lmto-unpack first
+      (Xscr ships in SCRIPT/ of the LMTO package).
+
+- name: Ensure ~/bin and ~/bin/{{ lmto_lsystem }} exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ bootstrap_user }}"
+    mode: "0755"
+  loop:
+    - "{{ bootstrap_home }}/bin"
+    - "{{ bootstrap_home }}/bin/{{ lmto_lsystem }}"
+
+- name: Copy Xscr into ~/bin (scripts directory)
+  ansible.builtin.copy:
+    src: "{{ lmto_xscr_src }}"
+    dest: "{{ bootstrap_home }}/bin/Xscr"
+    mode: "0755"
+    remote_src: true
+    owner: "{{ bootstrap_user }}"
+  become: false
+
+- name: Symlink Xscr into SYSBIN (~/bin/{{ lmto_lsystem }}/Xscr)
+  ansible.builtin.file:
+    src: "{{ bootstrap_home }}/bin/Xscr"
+    dest: "{{ bootstrap_home }}/bin/{{ lmto_lsystem }}/Xscr"
+    state: link
+    force: true
+    owner: "{{ bootstrap_user }}"
+  become: false

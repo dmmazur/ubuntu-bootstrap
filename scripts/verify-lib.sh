@@ -319,59 +319,108 @@ verify_lmto() {
   fi
 
   local pkg src_dir lsystem setvars profile_script scratch
-  while IFS= read -r pkg; do
-    [[ -z "${pkg}" ]] && continue
-    check_apt "${pkg}"
-  done < <(yaml_list apt_packages_lmto)
-
-  if [[ "$(yaml_bool lmto_install_intel_fortran_apt)" == "true" ]]; then
-    check_apt "$(yaml_scalar lmto_intel_fortran_package)"
-  fi
-  if [[ "$(yaml_bool lmto_install_intel_mkl_apt)" == "true" ]]; then
-    check_apt "$(yaml_scalar lmto_intel_mkl_package)"
-  fi
-
-  check_file "Intel oneAPI apt keyring" "$(yaml_scalar intel_oneapi_keyring)"
-  check_file "Intel oneAPI apt list" "$(yaml_scalar intel_oneapi_list)"
-
-  setvars="$(yaml_scalar lmto_intel_setvars)"
-  check_file "Intel setvars.sh" "${setvars}"
-
-  profile_script="$(yaml_scalar lmto_profile_script)"
-  check_file "LMTO profile.d script" "${profile_script}"
-
-  if grep -qE 'setvars\.sh' "${HOME_DIR}/.profile" 2>/dev/null; then
-    ok "~/.profile sources setvars"
-  else
-    missing "~/.profile does not source setvars.sh"
-  fi
-
-  scratch="$(yaml_scalar lmto_scratch_dir)"
-  check_file "scratch dir" "${scratch}"
-
   src_dir="${HOME_DIR}/src"
   lsystem="$(yaml_scalar lmto_lsystem)"
-  [[ -z "${lsystem}" ]] && lsystem=Linux
+  [[ -z "${lsystem}" ]] && lsystem=ifx
+  setvars="$(yaml_scalar lmto_intel_setvars)"
 
-  check_file "LMTO source ~/src/configure" "${src_dir}/configure"
-  check_file "LMTO makefile ifx_mkl" "${src_dir}/MAK/ifx_mkl.mak"
-  check_file "~/bin (scripts)" "${HOME_DIR}/bin"
-  check_file "~/bin/${lsystem}" "${HOME_DIR}/bin/${lsystem}"
-  check_file "~/lib/${lsystem}" "${HOME_DIR}/lib/${lsystem}"
-
-  # Prefer wrapper + binary as on working machine
-  if [[ -x "${HOME_DIR}/bin/lmt" ]]; then
-    ok "lmt wrapper: ${HOME_DIR}/bin/lmt"
+  section "lmto-intel"
+  if [[ "$(yaml_bool lmto_install_intel)" == "true" ]]; then
+    if [[ "$(yaml_bool lmto_install_intel_fortran_apt)" == "true" ]]; then
+      check_apt "$(yaml_scalar lmto_intel_fortran_package)"
+    fi
+    if [[ "$(yaml_bool lmto_install_intel_mkl_apt)" == "true" ]]; then
+      check_apt "$(yaml_scalar lmto_intel_mkl_package)"
+    fi
+    check_file "Intel oneAPI apt keyring" "$(yaml_scalar intel_oneapi_keyring)"
+    check_file "Intel oneAPI apt list" "$(yaml_scalar intel_oneapi_list)"
+    check_file "Intel setvars.sh" "${setvars}"
+    profile_script="$(yaml_scalar lmto_profile_script)"
+    check_file "LMTO profile.d script" "${profile_script}"
+    if [[ "$(yaml_bool lmto_ensure_bashrc_lsystem)" == "true" ]]; then
+      if grep -qE "export[[:space:]]+LSYSTEM=${lsystem}" "${HOME_DIR}/.bashrc" 2>/dev/null; then
+        ok "~/.bashrc exports LSYSTEM=${lsystem}"
+      else
+        missing "~/.bashrc missing: export LSYSTEM=${lsystem}"
+      fi
+    fi
+    if [[ "$(yaml_bool lmto_ensure_bashrc_setvars)" == "true" ]]; then
+      if grep -qE 'setvars\.sh' "${HOME_DIR}/.bashrc" 2>/dev/null; then
+        ok "~/.bashrc sources setvars"
+      else
+        missing "~/.bashrc does not source setvars.sh"
+      fi
+    fi
+    if [[ "$(yaml_bool lmto_ensure_user_profile_setvars)" == "true" ]]; then
+      if grep -qE 'setvars\.sh' "${HOME_DIR}/.profile" 2>/dev/null; then
+        ok "~/.profile sources setvars"
+      else
+        missing "~/.profile does not source setvars.sh"
+      fi
+    else
+      skipped "~/.profile setvars (lmto_ensure_user_profile_setvars is false)"
+    fi
   else
-    missing "lmt wrapper: ${HOME_DIR}/bin/lmt"
-  fi
-  if [[ -e "${HOME_DIR}/bin/${lsystem}/lmto" || -L "${HOME_DIR}/bin/${lsystem}/lmto" ]]; then
-    ok "lmto binary: ${HOME_DIR}/bin/${lsystem}/lmto"
-  else
-    missing "lmto binary: ${HOME_DIR}/bin/${lsystem}/lmto"
+    skipped "lmto_install_intel is false"
   fi
 
-  # Convenience symlinks — only expected when target exists (playbook same rule)
+  section "lmto-unpack"
+  if [[ "$(yaml_bool lmto_unpack_archives)" == "true" ]]; then
+    check_file "LMTO source ~/src/configure" "${src_dir}/configure"
+    check_file "LMTO makefile ifx_mkl" "${src_dir}/MAK/ifx_mkl.mak"
+    check_file "~/bin (scripts)" "${HOME_DIR}/bin"
+    check_file "~/bin/${lsystem}" "${HOME_DIR}/bin/${lsystem}"
+    check_file "~/lib/${lsystem}" "${HOME_DIR}/lib/${lsystem}"
+  else
+    skipped "lmto_unpack_archives is false"
+  fi
+
+  section "lmto-build"
+  if [[ "$(yaml_bool lmto_build)" == "true" ]]; then
+    while IFS= read -r pkg; do
+      [[ -z "${pkg}" ]] && continue
+      check_apt "${pkg}"
+    done < <(yaml_list apt_packages_lmto)
+
+    if [[ "$(yaml_bool lmto_scratch_enable)" == "true" ]]; then
+      scratch="$(yaml_scalar lmto_scratch_dir)"
+      check_file "scratch dir" "${scratch}"
+    else
+      skipped "scratch dir (lmto_scratch_enable is false)"
+    fi
+
+    check_file "OBJ/${lsystem}/systemoptions" "${src_dir}/OBJ/${lsystem}/systemoptions"
+    if [[ -x "${HOME_DIR}/bin/lmt" ]]; then
+      ok "lmt wrapper: ${HOME_DIR}/bin/lmt"
+    else
+      missing "lmt wrapper: ${HOME_DIR}/bin/lmt"
+    fi
+    if [[ -e "${HOME_DIR}/bin/${lsystem}/lmto" || -L "${HOME_DIR}/bin/${lsystem}/lmto" ]]; then
+      ok "lmto binary: ${HOME_DIR}/bin/${lsystem}/lmto"
+    else
+      missing "lmto binary: ${HOME_DIR}/bin/${lsystem}/lmto"
+    fi
+  else
+    skipped "lmto_build is false"
+  fi
+
+  section "lmto-xscr"
+  if [[ "$(yaml_bool lmto_install_xscr)" == "true" ]]; then
+    if [[ -x "${HOME_DIR}/bin/Xscr" ]]; then
+      ok "~/bin/Xscr"
+    else
+      missing "~/bin/Xscr"
+    fi
+    if [[ -e "${HOME_DIR}/bin/${lsystem}/Xscr" || -L "${HOME_DIR}/bin/${lsystem}/Xscr" ]]; then
+      ok "~/bin/${lsystem}/Xscr"
+    else
+      missing "~/bin/${lsystem}/Xscr"
+    fi
+  else
+    skipped "lmto_install_xscr is false"
+  fi
+
+  # Convenience symlinks — only expected when target exists
   section "lmto home symlinks"
   _check_optional_symlink() {
     local label="$1" path="$2" expect="$3"
@@ -407,7 +456,6 @@ verify_lmto() {
     fi
   fi
 
-  # ifx on PATH after setvars
   section "lmto compiler in environment"
   if [[ -f "${setvars}" ]]; then
     # shellcheck disable=SC1090

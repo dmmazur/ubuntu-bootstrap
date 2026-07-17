@@ -1,0 +1,46 @@
+---
+# Optional NFS + home convenience symlinks (lmto_nfs_enable)
+# Included under tag lmto when enabled
+
+- name: Ensure NFS mount point exists
+  ansible.builtin.file:
+    path: "{{ lmto_nfs_path }}"
+    state: directory
+    mode: "0755"
+
+- name: Add NFS entry to /etc/fstab
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    regexp: '^\s*{{ lmto_nfs_source | regex_escape }}\s+{{ lmto_nfs_path | regex_escape }}\s+'
+    line: >-
+      {{ lmto_nfs_source }} {{ lmto_nfs_path }} nfs {{ lmto_nfs_opts }} 0 0
+    state: present
+  when: lmto_nfs_fstab | bool
+
+- name: Mount NFS share for LMTO data/binaries
+  ansible.builtin.command:
+    cmd: "mount {{ lmto_nfs_path }}"
+  args:
+    creates: "{{ lmto_nfs_path }}/."
+  register: lmto_nfs_mount
+  failed_when: false
+  changed_when: lmto_nfs_mount.rc == 0
+
+- name: Warn if NFS mount failed
+  ansible.builtin.debug:
+    msg: >-
+      NFS mount of {{ lmto_nfs_source }} -> {{ lmto_nfs_path }} failed
+      (rc={{ lmto_nfs_mount.rc | default('n/a') }}). Check network/credentials.
+  when:
+    - lmto_nfs_mount.rc is defined
+    - lmto_nfs_mount.rc != 0
+
+- name: Create home convenience symlinks when targets exist
+  ansible.builtin.file:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    state: link
+    force: false
+  loop: "{{ lmto_home_symlinks }}"
+  when: item.src is exists
+  failed_when: false

@@ -1,0 +1,145 @@
+---
+# Phase 3: apt build deps, configure, localoptions FFLAGS, make
+# Tag: lmto-build
+
+- name: ">>> BUILD — configure + make (LSYSTEM={{ lmto_lsystem }})"
+  ansible.builtin.debug:
+    msg:
+      makefile: "{{ lmto_makefile_intel }}"
+      fflags_extra: "{{ lmto_fflags_extra }}"
+      jobs: "{{ lmto_make_jobs }}"
+
+- name: Install LMTO apt build prerequisites
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ apt_packages_lmto }}"
+  loop_control:
+    label: "{{ item }}"
+
+- name: Create scratch directory for builds
+  ansible.builtin.file:
+    path: "{{ lmto_scratch_dir }}"
+    state: directory
+    mode: "{{ lmto_scratch_mode }}"
+  when: lmto_scratch_enable | bool
+
+- name: Require LMTO source tree at lmto_src_dir
+  ansible.builtin.stat:
+    path: "{{ lmto_src_dir }}/configure"
+  register: lmto_configure_stat
+
+- name: Fail if LMTO source is missing
+  ansible.builtin.assert:
+    that:
+      - lmto_configure_stat.stat.exists
+      - lmto_configure_stat.stat.isreg or lmto_configure_stat.stat.islnk
+    fail_msg: >-
+      LMTO source not found at {{ lmto_src_dir }} (expected configure).
+      Run --tags lmto-unpack first, or copy/rsync the tree into {{ lmto_src_dir }}.
+
+- name: Ensure configure script is executable
+  ansible.builtin.file:
+    path: "{{ lmto_src_dir }}/configure"
+    mode: "0755"
+
+- name: Ensure home bin/lib dirs exist for build output
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ bootstrap_user }}"
+    mode: "0755"
+  loop:
+    - "{{ bootstrap_home }}/bin"
+    - "{{ bootstrap_home }}/bin/{{ lmto_lsystem }}"
+    - "{{ bootstrap_home }}/lib"
+    - "{{ bootstrap_home }}/lib/{{ lmto_lsystem }}"
+    - "{{ bootstrap_home }}/lib/LMHELP"
+
+- name: Detect Intel ifx availability (after setvars)
+  ansible.builtin.shell: |
+    set -e
+    if [ -f "{{ lmto_intel_setvars }}" ]; then
+      # shellcheck disable=SC1091
+      . "{{ lmto_intel_setvars }}" >/dev/null 2>&1 || true
+    fi
+    command -v ifx
+  args:
+    executable: /bin/bash
+  register: lmto_ifx_check
+  changed_when: false
+  failed_when: false
+
+- name: Choose LMTO makefile
+  ansible.builtin.set_fact:
+    lmto_makefile: "{{ lmto_makefile_intel if (lmto_ifx_check.rc | default(1) == 0) else lmto_makefile_gfortran }}"
+
+- name: Show selected LMTO makefile
+  ansible.builtin.debug:
+    msg: "Using MAK/{{ lmto_makefile }} (ifx rc={{ lmto_ifx_check.rc }})"
+
+- name: Configure LMTO non-interactively
+  ansible.builtin.shell: |
+    set -euo pipefail
+    if [ -f "{{ lmto_intel_setvars }}" ]; then
+      # shellcheck disable=SC1091
+      . "{{ lmto_intel_setvars }}" >/dev/null 2>&1 || true
+    fi
+    export LSYSTEM="{{ lmto_lsystem }}"
+    export HOME="{{ bootstrap_home }}"
+    # Stock configure prompts: development? makefile? BLAS/LAPACK?
+    printf '%s\n' '' '{{ lmto_makefile }}' '' | ./configure
+  args:
+    chdir: "{{ lmto_src_dir }}"
+    executable: /bin/bash
+    creates: "{{ lmto_src_dir }}/OBJ/{{ lmto_lsystem }}/systemoptions"
+  become: false
+  environment:
+    LSYSTEM: "{{ lmto_lsystem }}"
+    HOME: "{{ bootstrap_home }}"
+
+- name: Apply extra FFLAGS in localoptions
+  ansible.builtin.replace:
+    path: "{{ lmto_src_dir }}/OBJ/{{ lmto_lsystem }}/localoptions"
+    regexp: '(-fp-model=fast)(?! {{ lmto_fflags_extra | regex_escape }})'
+    replace: '\1 {{ lmto_fflags_extra }}'
+  become: false
+  when:
+    - lmto_fflags_extra | length > 0
+    - (lmto_src_dir + '/OBJ/' + lmto_lsystem + '/localoptions') is exists
+
+- name: Build LMTO (make)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    if [ -f "{{ lmto_intel_setvars }}" ]; then
+      # shellcheck disable=SC1091
+      . "{{ lmto_intel_setvars }}" >/dev/null 2>&1 || true
+    fi
+    export LSYSTEM="{{ lmto_lsystem }}"
+    make -j"{{ lmto_make_jobs }}"
+  args:
+    chdir: "{{ lmto_src_dir }}"
+    executable: /bin/bash
+  become: false
+  environment:
+    LSYSTEM: "{{ lmto_lsystem }}"
+    HOME: "{{ bootstrap_home }}"
+
+- name: Verify lmto binary is available
+  ansible.builtin.stat:
+    path: "{{ bootstrap_home }}/bin/{{ lmto_lsystem }}/lmto"
+  register: lmto_lmto_bin
+
+- name: Verify lmt wrapper script is available
+  ansible.builtin.stat:
+    path: "{{ bootstrap_home }}/bin/lmt"
+  register: lmto_lmt_script
+
+- name: Report LMTO build result
+  ansible.builtin.debug:
+    msg: >-
+      Build finished. makefile={{ lmto_makefile }};
+      lmto binary exists={{ lmto_lmto_bin.stat.exists | default(false) }}
+      at {{ bootstrap_home }}/bin/{{ lmto_lsystem }}/lmto;
+      lmt script exists={{ lmto_lmt_script.stat.exists | default(false) }}.
+      Open a new shell (or source ~/.bashrc) so LSYSTEM/setvars apply.

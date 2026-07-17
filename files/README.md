@@ -18,7 +18,17 @@ If several files match a pattern, the newest (by modification time) is installed
 ./scripts/verify-debs.sh
 ```
 
-For Intel oneAPI (Fortran + MKL via apt) and how to supply `~/src`, see [`LMTO.md`](LMTO.md).
+For Intel oneAPI (Fortran + MKL via apt), LMTO archives, and phased install, see [`LMTO.md`](LMTO.md).
+
+Optional LMTO archives (not committed; gitignored if you add patterns):
+
+- `lmto5.04.6.tar.gz`
+- `lmto5.04.6p.tar.gz`
+
+```bash
+cp ~/Downloads/AIR_AT_IMP/src/lmto5.04.6*.tar.gz files/
+./scripts/bootstrap-lmto.sh unpack
+```
 
 ## Download links
 
