@@ -4,7 +4,7 @@ Phased install — each step can run alone:
 
 | Phase | Script / tag | What it does |
 |-------|--------------|--------------|
-| 1 Intel | `./scripts/bootstrap/bootstrap-lmto.sh intel` (`lmto-intel`) | Intel apt repo, `ifx`, MKL, `~/.bashrc` (`LSYSTEM` + `setvars`), `/etc/profile.d/lmto.sh` |
+| 1 Intel | `./scripts/bootstrap/bootstrap-lmto.sh intel` (`lmto-intel`) | Intel apt repo, `ifx`, MKL; `~/.bashrc` (`LSYSTEM` + `setvars`); `/etc/profile.d/lmto.sh` (PATH only, no `setvars`) |
 | 2 Unpack | `./scripts/bootstrap/bootstrap-lmto.sh unpack` (`lmto-unpack`) | Create `~/src`, unpack base then patch archives |
 | 2b R dir | `./scripts/bootstrap/bootstrap-lmto.sh rdir` (`lmto-rdir`) | Create `~/R` for LMTO cases (`lmt` scratch paths) |
 | 3 Build | `./scripts/bootstrap/bootstrap-lmto.sh build` (`lmto-build`) | apt deps, optional `/scratch`, `./configure`, edit `localoptions`, `make` |

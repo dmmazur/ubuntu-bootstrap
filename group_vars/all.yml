@@ -215,11 +215,11 @@ intel_oneapi_repo: >-
 
 lmto_intel_setvars: /opt/intel/oneapi/setvars.sh
 
-# Shell env (AIR: last two lines of ~/.bashrc)
-lmto_profile_script: /etc/profile.d/lmto.sh
+# Shell env (AIR: setvars only in ~/.bashrc — not in profile.d)
+lmto_profile_script: /etc/profile.d/lmto.sh   # PATH + LSYSTEM only
 lmto_ensure_bashrc_lsystem: true
 lmto_ensure_bashrc_setvars: true
-# Optional legacy: also source setvars from ~/.profile (AIR did not)
+# Optional legacy: also source setvars from ~/.profile (AIR did not; avoid duplicate)
 lmto_ensure_user_profile_setvars: false
 
 # --- Phase 2: create ~/src + unpack archives ---
