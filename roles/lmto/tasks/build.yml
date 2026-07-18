@@ -75,7 +75,13 @@
       . "{{ lmto_intel_setvars }}" >/dev/null 2>&1 || true
     fi
     set -e
-    command -v ifx
+    # Reject ~/bin/ifx (LSYSTEM dir) — command -v can return a directory.
+    _ifx="$(command -v ifx 2>/dev/null || true)"
+    if [ -n "${_ifx}" ] && [ -f "${_ifx}" ] && [ -x "${_ifx}" ]; then
+      printf '%s\n' "${_ifx}"
+      exit 0
+    fi
+    exit 1
   args:
     executable: /bin/bash
   register: lmto_ifx_check
@@ -97,15 +103,18 @@
 
     - name: Configure LMTO non-interactively
       ansible.builtin.shell: |
+        # AIR order: LMTO ~/bin first, then setvars so Intel stays ahead of
+        # ~/bin/ifx (directory) and `ifx` resolves to the real compiler.
+        set -uo pipefail
+        export LSYSTEM="{{ lmto_lsystem }}"
+        export HOME="{{ bootstrap_home }}"
+        export PATH="{{ bootstrap_home }}/bin/{{ lmto_lsystem }}:{{ bootstrap_home }}/bin:${PATH}"
         set +eu
         if [ -f "{{ lmto_intel_setvars }}" ]; then
           # shellcheck disable=SC1091
           . "{{ lmto_intel_setvars }}" >/dev/null 2>&1 || true
         fi
         set -uo pipefail
-        export LSYSTEM="{{ lmto_lsystem }}"
-        export HOME="{{ bootstrap_home }}"
-        export PATH="{{ bootstrap_home }}/bin:{{ bootstrap_home }}/bin/{{ lmto_lsystem }}:${PATH}"
         mkdir -p "{{ bootstrap_log_dir }}"
         logf="{{ bootstrap_log_dir }}/configure.log"
         run_as_user() {
@@ -155,15 +164,18 @@
 
     - name: Build LMTO (make)
       ansible.builtin.shell: |
+        # AIR order: LMTO ~/bin first, then setvars so Intel stays ahead of
+        # ~/bin/ifx (directory) and `ifx` resolves to the real compiler.
+        set -uo pipefail
+        export LSYSTEM="{{ lmto_lsystem }}"
+        export HOME="{{ bootstrap_home }}"
+        export PATH="{{ bootstrap_home }}/bin/{{ lmto_lsystem }}:{{ bootstrap_home }}/bin:${PATH}"
         set +eu
         if [ -f "{{ lmto_intel_setvars }}" ]; then
           # shellcheck disable=SC1091
           . "{{ lmto_intel_setvars }}" >/dev/null 2>&1 || true
         fi
         set -uo pipefail
-        export LSYSTEM="{{ lmto_lsystem }}"
-        export HOME="{{ bootstrap_home }}"
-        export PATH="{{ bootstrap_home }}/bin:{{ bootstrap_home }}/bin/{{ lmto_lsystem }}:${PATH}"
         mkdir -p "{{ bootstrap_log_dir }}"
         logf="{{ bootstrap_log_dir }}/make.log"
         run_as_user() {

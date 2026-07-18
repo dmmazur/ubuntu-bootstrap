@@ -57,15 +57,17 @@
 
 - name: Run lmt in Fe (interactive inif answers via stdin)
   ansible.builtin.shell: |
+    # AIR order: LMTO ~/bin first, then setvars (Intel ahead of ~/bin/ifx dir).
+    set -uo pipefail
+    export LSYSTEM="{{ lmto_lsystem }}"
+    export HOME="{{ bootstrap_home }}"
+    export PATH="{{ bootstrap_home }}/bin/{{ lmto_lsystem }}:{{ bootstrap_home }}/bin:${PATH}"
     set +eu
     if [ -f "{{ lmto_intel_setvars }}" ]; then
       # shellcheck disable=SC1091
       . "{{ lmto_intel_setvars }}" >/dev/null 2>&1 || true
     fi
     set -uo pipefail
-    export LSYSTEM="{{ lmto_lsystem }}"
-    export HOME="{{ bootstrap_home }}"
-    export PATH="{{ bootstrap_home }}/bin:{{ bootstrap_home }}/bin/{{ lmto_lsystem }}:${PATH}"
     mkdir -p "{{ bootstrap_log_dir }}"
     logf="{{ bootstrap_log_dir }}/lmt-{{ lmto_test_compound }}.log"
     run_as_user() {

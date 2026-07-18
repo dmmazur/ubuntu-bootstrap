@@ -1,15 +1,8 @@
 # LMTO + Intel oneAPI environment (ubuntu-bootstrap)
-
-# Intel compilers / MKL (setvars is not safe under set -u / set -e)
-if [ -f "{{ lmto_intel_setvars }}" ]; then
-  _lmto_setvars_eu=$-
-  set +eu
-  # shellcheck disable=SC1091
-  . "{{ lmto_intel_setvars }}" >/dev/null 2>&1 || true
-  case "${_lmto_setvars_eu}" in *e*) set -e ;; esac
-  case "${_lmto_setvars_eu}" in *u*) set -u ;; esac
-  unset _lmto_setvars_eu
-fi
+#
+# AIR order: put ~/bin on PATH first, then source setvars so Intel's bin is
+# prepended. If setvars runs first and ~/bin is prepended afterward,
+# ~/bin/$LSYSTEM (e.g. ~/bin/ifx) shadows the `ifx` compiler → Permission denied.
 
 # LMTO scripts (~/bin) and architecture-specific binaries (~/bin/$LSYSTEM)
 export LSYSTEM="${LSYSTEM:-{{ lmto_lsystem }}}"
@@ -21,4 +14,15 @@ case ":${PATH}:" in
   *":${HOME}/bin/${LSYSTEM}:"*) ;;
   *) PATH="${HOME}/bin/${LSYSTEM}:${PATH}" ;;
 esac
+
+# Intel compilers / MKL (setvars is not safe under set -u / set -e)
+if [ -f "{{ lmto_intel_setvars }}" ]; then
+  _lmto_setvars_eu=$-
+  set +eu
+  # shellcheck disable=SC1091
+  . "{{ lmto_intel_setvars }}" >/dev/null 2>&1 || true
+  case "${_lmto_setvars_eu}" in *e*) set -e ;; esac
+  case "${_lmto_setvars_eu}" in *u*) set -u ;; esac
+  unset _lmto_setvars_eu
+fi
 export PATH
