@@ -46,20 +46,38 @@ Optional: place `files/latex-userdata.tgz` (from `./scripts/gather/gather-latex-
 
 ```yaml
 # group_vars/all.yml
-install_latex: true          # whole section
+install_latex: true          # TeX Live section
 latex_install_apt: true
 latex_ensure_texmf: true
 latex_run_smoke: true
 ```
 
-## Planned follow-up (not in this section)
+## LaTeX editors (separate section)
 
-**Editor extensions** — separate playbook section for Cursor / VS Code **LaTeX Workshop** (and similar). Implement after this LaTeX install section is stable.
+Installs **LaTeX Workshop** (`James-Yu.latex-workshop`) into VS Code and Cursor via their CLIs. Independent of TeX Live — skips an editor if `code` / `cursor` is not on PATH.
+
+```bash
+./scripts/bootstrap/bootstrap-latex-editors.sh
+./scripts/verify/verify-latex-editors.sh
+```
+
+```yaml
+install_latex_editors: true
+latex_workshop_extension_id: James-Yu.latex-workshop
+latex_editors:
+  - name: code      # VS Code (snap)
+    label: VS Code
+  - name: cursor    # Cursor (.deb or apt)
+    label: Cursor
+```
+
+What Workshop gives you: build recipes, PDF preview, SyncTeX, error parsing, snippets. Agents do not need it; it helps you review/compile while editing.
 
 ## Verify
 
 ```bash
 ./scripts/verify/verify-latex.sh
+./scripts/verify/verify-latex-editors.sh
 pdflatex --version
 kpsewhich article.cls
 ls ~/TeX/smoke/smoke.pdf

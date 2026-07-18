@@ -38,6 +38,7 @@ Verbose Ansible output: `BOOTSTRAP_VERBOSE=1 ./bootstrap.sh`
 | *(always)* | on | `common`, `snaps` |
 | `enable_lab_packages` | `true` | `lab` |
 | `install_latex` | `true` | `latex` (self-contained TeX Live apt) |
+| `install_latex_editors` | `true` | `latex-editors` (LaTeX Workshop for Cursor/VS Code) |
 | `install_claude_desktop` | `true` | `claude` |
 | `install_google_chrome` | `true` | `chrome` |
 | `install_lmto` | `true` | `lmto` |
@@ -72,6 +73,7 @@ Section banners (`>>> COMMON`, …) and per-package task names show progress.
 | `./scripts/bootstrap/bootstrap-latex.sh apt` | TeX Live apt packages only |
 | `./scripts/bootstrap/bootstrap-latex.sh texmf` | `~/texmf` + optional userdata archive |
 | `./scripts/bootstrap/bootstrap-latex.sh smoke` | pdflatex smoke test |
+| `./scripts/bootstrap/bootstrap-latex-editors.sh` | LaTeX Workshop → Cursor + VS Code |
 | `./scripts/bootstrap/bootstrap-snaps.sh` | Snaps |
 | `./scripts/bootstrap/bootstrap-debs.sh` | Cursor, VeraCrypt `.debs` (`install_debs`, currently off) |
 | `./scripts/bootstrap/bootstrap-claude.sh` | Claude Desktop |
@@ -96,6 +98,7 @@ Read expectations from `group_vars/all.yml` and report **OK / MISSING / SKIP** (
 ./scripts/verify/verify-common.sh
 ./scripts/verify/verify-lab.sh
 ./scripts/verify/verify-latex.sh
+./scripts/verify/verify-latex-editors.sh
 ./scripts/verify/verify-snaps.sh
 ./scripts/verify/verify-lmto.sh           # Intel, ~/src, binaries, profile, scratch, symlinks, NFS
 ./scripts/verify/verify-claude.sh
@@ -111,6 +114,7 @@ Read expectations from `group_vars/all.yml` and report **OK / MISSING / SKIP** (
 | `./scripts/verify/verify-common.sh` | Common apt packages |
 | `./scripts/verify/verify-lab.sh` | Lab apt packages |
 | `./scripts/verify/verify-latex.sh` | TeX Live apt / `pdflatex` / `~/texmf` / smoke.pdf |
+| `./scripts/verify/verify-latex-editors.sh` | LaTeX Workshop in Cursor / VS Code |
 | `./scripts/verify/verify-snaps.sh` | Snap packages |
 | `./scripts/verify/verify-debs.sh` | Cursor / VeraCrypt |
 | `./scripts/verify/verify-claude.sh` | Claude Desktop + apt repo files |
@@ -151,6 +155,7 @@ Writes `~/Downloads/lmto-setup-report-*.txt`. Copy `~/src` separately via rsync.
 | `latex-apt` | Curated TeX Live apt packages (+ own apt update) |
 | `latex-texmf` | `~/texmf` layout + optional `files/latex-userdata.tgz` |
 | `latex-smoke` | `pdflatex` smoke test → `~/TeX/smoke/smoke.pdf` |
+| `latex-editors` | LaTeX Workshop extension for Cursor + VS Code |
 | `snaps` | VS Code, Telegram, Claude Code |
 | `flatpak` | Flathub + Newelle, Flatseal (`install_flatpak`, currently off) |
 | `debs` | Cursor, VeraCrypt from `files/` (`install_debs`, currently off) |
@@ -192,6 +197,7 @@ BOOTSTRAP_VERBOSE=1 ./scripts/bootstrap/bootstrap-snaps.sh
 | `files/LATEX.md` | LaTeX apt packages + phases (dep24 mapping) |
 | `roles/lmto/` | LMTO install role (prereqs → Intel apt → env → build) |
 | `roles/latex/` | LaTeX install role (apt → texmf → smoke) |
+| `roles/latex_editors/` | LaTeX Workshop for Cursor / VS Code |
 
 ## LaTeX
 
@@ -205,7 +211,16 @@ Self-contained (`install_latex: true`). Does **not** require common, lab, or LMT
 
 Packages match the dep24 gather list, plus `latexmk` and `biber`.
 
-**Planned later (separate section):** Cursor / VS Code **LaTeX Workshop** editor extensions — not part of this LaTeX install role.
+### LaTeX editors (LaTeX Workshop)
+
+Separate self-contained section (`install_latex_editors: true`). Installs **James-Yu.latex-workshop** into VS Code (`code`) and Cursor (`cursor`) when those CLIs exist. Skips an editor if it is not installed (does not fail). Does not require the TeX Live `latex` section.
+
+```bash
+./scripts/bootstrap/bootstrap-latex-editors.sh
+./scripts/verify/verify-latex-editors.sh
+```
+
+See [`files/LATEX.md`](files/LATEX.md).
 
 ## LMTO
 

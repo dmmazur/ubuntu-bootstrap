@@ -1,6 +1,6 @@
 ---
 # Local Ubuntu workstation bootstrap.
-# Tags: common, snaps, flatpak, debs, claude, chrome, ollama, lab, latex, lmto
+# Tags: common, snaps, flatpak, debs, claude, chrome, ollama, lab, latex, latex-editors, lmto
 # Tip: add -v or -vv for more Ansible detail.
 # Command logs: {{ bootstrap_log_dir }} (see scripts/bootstrap/lib.sh / /tmp/ubuntu-bootstrap-latest)
 
@@ -234,6 +234,18 @@
         name: latex
       when: install_latex | bool
       tags: [latex, latex-apt, latex-texmf, latex-smoke]
+
+    - name: ">>> LATEX EDITORS — LaTeX Workshop (Cursor / VS Code)"
+      ansible.builtin.debug:
+        msg: "Extension {{ latex_workshop_extension_id }} for {{ latex_editors | map(attribute='name') | list }}"
+      when: install_latex_editors | bool
+      tags: [latex-editors]
+
+    - name: Install LaTeX Workshop editor extensions
+      ansible.builtin.include_role:
+        name: latex_editors
+      when: install_latex_editors | bool
+      tags: [latex-editors]
 
     - name: ">>> LMTO — phased install (intel / unpack / build / xscr)"
       ansible.builtin.debug:

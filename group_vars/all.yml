@@ -13,6 +13,8 @@ install_debs: false
 enable_lab_packages: true
 # LaTeX / TeX Live via apt (dep24 curated set) — self-contained section
 install_latex: true
+# LaTeX Workshop extension for Cursor + VS Code (separate from TeX Live install)
+install_latex_editors: true
 # Full LMTO stack (phased: intel / unpack / build / xscr — see files/LMTO.md)
 install_lmto: true
 
@@ -79,6 +81,15 @@ latex_texmf_dir: "{{ bootstrap_home }}/texmf"
 latex_userdata_archive: "{{ playbook_dir }}/files/latex-userdata.tgz"
 latex_run_smoke: true
 latex_smoke_dir: "{{ bootstrap_home }}/TeX/smoke"
+
+# --- LaTeX editors: LaTeX Workshop for VS Code (code) and Cursor ---
+# Self-contained: skips an editor if its CLI is not installed (does not require snaps/debs/latex).
+latex_workshop_extension_id: James-Yu.latex-workshop
+latex_editors:
+  - name: code
+    label: VS Code
+  - name: cursor
+    label: Cursor
 
 # --- apt: LMTO build/runtime prerequisites ---
 # (subset overlaps lab/common; safe to install again — apt is idempotent)

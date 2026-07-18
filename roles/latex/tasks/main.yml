@@ -2,7 +2,7 @@
 # LaTeX / TeX Live — self-contained (no lab/LMTO/common dependency).
 # Phases: latex-apt | latex-texmf | latex-smoke
 # Full: --tags latex
-# Follow-up (not here): editor extensions (Cursor/VS Code LaTeX Workshop).
+# Follow-up: roles/latex_editors installs LaTeX Workshop (separate tag latex-editors).
 
 - name: ">>> LATEX role — phases apt / texmf / smoke"
   ansible.builtin.debug:

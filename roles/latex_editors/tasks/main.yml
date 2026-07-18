@@ -1,0 +1,73 @@
+---
+# Install LaTeX Workshop into Cursor and/or VS Code (CLI --install-extension).
+# Tag: latex-editors
+# Self-contained: does not require the latex/lab/snaps/debs sections.
+# If `code` or `cursor` is missing, that editor is skipped (not a failure).
+
+- name: ">>> LATEX EDITORS — {{ latex_workshop_extension_id }}"
+  ansible.builtin.debug:
+    msg:
+      extension: "{{ latex_workshop_extension_id }}"
+      editors: "{{ latex_editors | map(attribute='name') | list }}"
+      as_user: "{{ bootstrap_user }}"
+
+- name: Install LaTeX Workshop via editor CLI
+  ansible.builtin.shell: |
+    set -uo pipefail
+    mkdir -p "{{ bootstrap_log_dir }}"
+    logf="{{ bootstrap_log_dir }}/latex-workshop-{{ item.name }}.log"
+    cli="{{ item.name }}"
+    ext="{{ latex_workshop_extension_id }}"
+    run_as_user() {
+      if [ "$(id -u)" -eq 0 ] && [ "{{ bootstrap_user }}" != root ]; then
+        runuser -u "{{ bootstrap_user }}" --preserve-environment -- "$@"
+      else
+        "$@"
+      fi
+    }
+    set +e
+    {
+      printf '# %s  %s --install-extension %s\n' "$(date -Iseconds)" "${cli}" "${ext}"
+      if ! command -v "${cli}" >/dev/null 2>&1; then
+        printf 'SKIP: %s CLI not found (%s). Install VS Code snap or Cursor .deb first.\n' \
+          "{{ item.label }}" "${cli}"
+        exit 0
+      fi
+      if run_as_user "${cli}" --list-extensions 2>/dev/null | grep -qi "^${ext}$"; then
+        printf 'OK: %s already installed for %s\n' "${ext}" "${cli}"
+        exit 0
+      fi
+      run_as_user "${cli}" --install-extension "${ext}"
+      exit $?
+    } 2>&1 | tee -a "${logf}"
+    rc=${PIPESTATUS[0]}
+    set -e
+    exit "${rc}"
+  args:
+    executable: /bin/bash
+  loop: "{{ latex_editors }}"
+  loop_control:
+    label: "{{ item.label }} ({{ item.name }})"
+  register: latex_workshop_install
+  environment:
+    HOME: "{{ bootstrap_home }}"
+  changed_when: >-
+    'already installed' not in (stdout | default('') | lower)
+    and 'SKIP:' not in (stdout | default(''))
+  failed_when: >-
+    (rc | default(0) | int) != 0
+    and 'SKIP:' not in (stdout | default(''))
+
+- name: Report LaTeX Workshop install results
+  ansible.builtin.debug:
+    msg: >-
+      {{ item.item.label }}:
+      {%- if 'SKIP:' in (item.stdout | default('')) %} skipped (CLI missing)
+      {%- elif 'already installed' in (item.stdout | default('') | lower) %} already present
+      {%- elif (item.rc | default(1) | int) == 0 %} installed
+      {%- else %} FAILED
+      {%- endif %}
+  loop: "{{ latex_workshop_install.results }}"
+  loop_control:
+    label: "{{ item.item.label }}"
+  when: latex_workshop_install is defined

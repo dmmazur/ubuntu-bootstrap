@@ -278,6 +278,48 @@ verify_latex() {
   fi
 }
 
+verify_latex_editors() {
+  section "latex-editors"
+  if [[ "$(yaml_bool install_latex_editors)" != "true" ]]; then
+    skipped "install_latex_editors is false — section disabled"
+    return 0
+  fi
+
+  local ext
+  ext="$(yaml_scalar latex_workshop_extension_id)"
+  [[ -z "${ext}" ]] && ext="James-Yu.latex-workshop"
+
+  _check_editor_ext() {
+    local cli="$1" label="$2"
+    if ! command -v "${cli}" >/dev/null 2>&1; then
+      skipped "${label}: ${cli} CLI not installed — extension not expected"
+      return 0
+    fi
+    if "${cli}" --list-extensions 2>/dev/null | grep -qi "^${ext}$"; then
+      ok "${label}: ${ext}"
+    else
+      # Fallback: extension dir naming (james-yu.latex-workshop-*)
+      local dir
+      case "${cli}" in
+        code) dir="${HOME_DIR}/.vscode/extensions" ;;
+        cursor) dir="${HOME_DIR}/.cursor/extensions" ;;
+        *) dir="" ;;
+      esac
+      if [[ -n "${dir}" ]] && {
+           compgen -G "${dir}/james-yu.latex-workshop-*" >/dev/null 2>&1 \
+           || compgen -G "${dir}/James-Yu.latex-workshop-*" >/dev/null 2>&1
+         }; then
+        ok "${label}: ${ext} (found under ${dir})"
+      else
+        missing "${label}: ${ext} not installed (run ./scripts/bootstrap/bootstrap-latex-editors.sh)"
+      fi
+    fi
+  }
+
+  _check_editor_ext code "VS Code"
+  _check_editor_ext cursor "Cursor"
+}
+
 verify_snaps() {
   section "snaps"
   local name
@@ -551,6 +593,7 @@ verify_all() {
   verify_common
   verify_lab
   verify_latex
+  verify_latex_editors
   verify_snaps
   verify_flatpak
   verify_debs
