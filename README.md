@@ -148,7 +148,7 @@ Writes `~/Downloads/lmto-setup-report-*.txt`. Copy `~/src` separately via rsync.
 | `lmto-intel` | Intel oneAPI apt + `~/.bashrc` LSYSTEM/setvars |
 | `lmto-unpack` | Create `~/src`, unpack base + patch archives |
 | `lmto-rdir` | Create `~/R` for LMTO cases |
-| `lmto-build` | apt deps, configure, localoptions, make |
+| `lmto-build` | apt deps, configure, localoptions, make (optional `/scratch` if enabled) |
 | `lmto-xscr` | Copy `SCRIPT/Xscr` → `~/bin` + `~/bin/ifx` |
 | `lmto-test` | Wipe `~/R/Fe`, run bare `lmt` structure setup |
 | `lmto-ownership` | chown LMTO home paths to login user |
@@ -198,6 +198,34 @@ Defaults match the AIR workstation: **`LSYSTEM=ifx`**, archives → configure/ma
 ```
 
 Place `lmto5.04.6.tar.gz` and `lmto5.04.6p.tar.gz` in `files/`, `~/Downloads/`, or `~/src/` before unpack.
+
+### Scratch directory (`/scratch`)
+
+Not a separate phase — an **optional step inside `lmto-build`**. Off by default (matches AIR, where `/scratch` often does not exist).
+
+| Setting | Default | Meaning |
+|---------|---------|---------|
+| `lmto_scratch_enable` | `false` | Create the scratch dir during build |
+| `lmto_scratch_dir` | `/scratch` | Directory path |
+| `lmto_scratch_mode` | `"0777"` | Permissions (world-writable like institute hosts) |
+
+**What it is for:** runtime temp files for `lmt`, not compiling. When `/scratch` exists, the `lmt` wrapper uses `/scratch/$USER/…` derived from the case path under `~/R/` (e.g. Fe → `/scratch/dmazur/Fe_…`). If `/scratch` is missing, `lmt` prints a warning and continues without it.
+
+**Enable** (e.g. to match dep24-style hosts) in `group_vars/all.yml`:
+
+```yaml
+lmto_scratch_enable: true
+```
+
+Then run (or re-run) the build phase:
+
+```bash
+./scripts/bootstrap-lmto.sh build
+# or:
+./scripts/bootstrap-lmto.sh
+```
+
+Verify expects `/scratch` only when `lmto_scratch_enable` is `true`.
 
 ## Local `.deb` downloads
 

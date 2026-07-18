@@ -7,7 +7,7 @@ Phased install — each step can run alone:
 | 1 Intel | `./scripts/bootstrap-lmto.sh intel` (`lmto-intel`) | Intel apt repo, `ifx`, MKL, `~/.bashrc` (`LSYSTEM` + `setvars`), `/etc/profile.d/lmto.sh` |
 | 2 Unpack | `./scripts/bootstrap-lmto.sh unpack` (`lmto-unpack`) | Create `~/src`, unpack base then patch archives |
 | 2b R dir | `./scripts/bootstrap-lmto.sh rdir` (`lmto-rdir`) | Create `~/R` for LMTO cases (`lmt` scratch paths) |
-| 3 Build | `./scripts/bootstrap-lmto.sh build` (`lmto-build`) | apt deps, `./configure`, edit `localoptions`, `make` |
+| 3 Build | `./scripts/bootstrap-lmto.sh build` (`lmto-build`) | apt deps, optional `/scratch`, `./configure`, edit `localoptions`, `make` |
 | 4 Xscr | `./scripts/bootstrap-lmto.sh xscr` (`lmto-xscr`) | Copy `SCRIPT/Xscr` → `~/bin/Xscr` + symlink in `~/bin/ifx/` |
 | 5 Test | `./scripts/bootstrap-lmto.sh test` (`lmto-test`) | Wipe `~/R/Fe`, run bare `lmt` with BCC Fe answers → `lmt.lmt` |
 | Ownership | `./scripts/bootstrap-lmto.sh ownership` (`lmto-ownership`) | `chown` `~/src` `~/bin` `~/lib` to the login user (also runs after unpack/build even on failure) |
@@ -62,7 +62,25 @@ source /opt/intel/oneapi/setvars.sh
 | `lmto_fflags_extra` | `-xHost -debug all -g -traceback` |
 | `lmto_make_jobs` | `1` (LMTO makefiles are not parallel-safe) |
 | `lmto_exclude_targets` | `GRFTOOLS`, `XSCR` (AIR omitted these; old C vs modern gcc) |
+| `lmto_scratch_enable` | `false` — optional `/scratch` mkdir inside build (see below) |
 | Output | `~/bin/ifx`, `~/lib/ifx` |
+
+## Scratch directory (`/scratch`)
+
+Optional step **inside** phase 3 (`lmto-build`), not a separate tag. Default **off** (AIR often had no `/scratch`).
+
+When `lmto_scratch_enable: true`, the build phase creates `lmto_scratch_dir` (default `/scratch`) with mode `lmto_scratch_mode` (`0777`). The `lmt` wrapper then stores large temp files under `/scratch/$USER/…` using the case path after `R/`. Without `/scratch`, `lmt` warns and runs without scratch.
+
+```yaml
+# group_vars/all.yml
+lmto_scratch_enable: true
+# lmto_scratch_dir: /scratch
+# lmto_scratch_mode: "0777"
+```
+
+```bash
+./scripts/bootstrap-lmto.sh build
+```
 
 ## NFS
 
