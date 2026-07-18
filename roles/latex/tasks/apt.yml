@@ -1,0 +1,21 @@
+---
+# Phase 1: apt update + curated TeX Live packages (dep24 set + latexmk/biber).
+# Tag: latex-apt
+# Self-contained: runs its own apt update (does not rely on common/lab tags).
+
+- name: ">>> LATEX APT — {{ apt_packages_latex | length }} package(s)"
+  ansible.builtin.debug:
+    msg: "{{ apt_packages_latex }}"
+
+- name: Update apt cache for LaTeX (logged)
+  ansible.builtin.include_tasks:
+    file: "{{ playbook_dir }}/tasks/logged_apt_update.yml"
+  vars:
+    logged_apt_name: apt-latex-update
+
+- name: Install LaTeX apt packages (logged)
+  ansible.builtin.include_tasks:
+    file: "{{ playbook_dir }}/tasks/logged_apt_install.yml"
+  vars:
+    logged_apt_name: apt-latex
+    logged_apt_packages: "{{ apt_packages_latex }}"

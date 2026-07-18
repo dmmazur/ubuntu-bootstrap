@@ -3,18 +3,18 @@ set -euo pipefail
 # LMTO phased install (AIR layout: LSYSTEM=ifx).
 #
 # Usage:
-#   ./scripts/bootstrap-lmto.sh              # all phases
-#   ./scripts/bootstrap-lmto.sh all
-#   ./scripts/bootstrap-lmto.sh intel        # 1) Intel apt + bashrc
-#   ./scripts/bootstrap-lmto.sh unpack       # 2) ~/src + unpack archives
-#   ./scripts/bootstrap-lmto.sh rdir         # 2b) create ~/R (cases)
-#   ./scripts/bootstrap-lmto.sh build        # 3) configure + make
-#   ./scripts/bootstrap-lmto.sh xscr         # 4) copy Xscr
-#   ./scripts/bootstrap-lmto.sh test         # 5) wipe ~/R/Fe + bare lmt
-#   ./scripts/bootstrap-lmto.sh ownership    # chown ~/src ~/bin ~/lib ~/R → login user
+#   ./scripts/bootstrap/bootstrap-lmto.sh              # all phases
+#   ./scripts/bootstrap/bootstrap-lmto.sh all
+#   ./scripts/bootstrap/bootstrap-lmto.sh intel        # 1) Intel apt + bashrc
+#   ./scripts/bootstrap/bootstrap-lmto.sh unpack       # 2) ~/src + unpack archives
+#   ./scripts/bootstrap/bootstrap-lmto.sh rdir         # 2b) create ~/R (cases)
+#   ./scripts/bootstrap/bootstrap-lmto.sh build        # 3) configure + make
+#   ./scripts/bootstrap/bootstrap-lmto.sh xscr         # 4) copy Xscr
+#   ./scripts/bootstrap/bootstrap-lmto.sh test         # 5) wipe ~/R/Fe + bare lmt
+#   ./scripts/bootstrap/bootstrap-lmto.sh ownership    # chown ~/src ~/bin ~/lib ~/R → login user
 #
 # Extra args after the phase are passed to ansible-playbook, e.g.:
-#   ./scripts/bootstrap-lmto.sh intel --check
+#   ./scripts/bootstrap/bootstrap-lmto.sh intel --check
 #
 # shellcheck source=lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"

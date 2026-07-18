@@ -9,6 +9,8 @@ venv/
 files/*.deb
 files/*.sh
 files/*.tar.gz
+files/*.tgz
 !files/.gitkeep
 !files/README.md
 !files/LMTO.md
+!files/LATEX.md

@@ -3,9 +3,9 @@
 # Copy the generated report (and optional archive) to the new PC for reinstall.
 #
 # Usage (on the machine WITH LaTeX already installed):
-#   ./scripts/gather-latex-setup.sh
-#   ./scripts/gather-latex-setup.sh -o ~/Downloads/latex-setup-report.txt
-#   ./scripts/gather-latex-setup.sh --archive   # also pack ~/texmf + key configs
+#   ./scripts/gather/gather-latex-setup.sh
+#   ./scripts/gather/gather-latex-setup.sh -o ~/Downloads/latex-setup-report.txt
+#   ./scripts/gather/gather-latex-setup.sh --archive   # also pack ~/texmf + key configs
 #
 # Safe: read-only probes + optional tar of user texmf (no sudo required for most checks).
 # Some package queries work better with sudo; the script asks only if needed.

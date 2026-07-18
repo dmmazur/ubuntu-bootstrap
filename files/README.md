@@ -14,11 +14,14 @@ If several files match a pattern, the newest (by modification time) is installed
 
 ```bash
 # After enabling install_debs: true
-./scripts/bootstrap-debs.sh
-./scripts/verify-debs.sh
+./scripts/bootstrap/bootstrap-debs.sh
+./scripts/verify/verify-debs.sh
 ```
 
 For Intel oneAPI (Fortran + MKL via apt), LMTO archives, and phased install, see [`LMTO.md`](LMTO.md).
+For LaTeX apt install / `~/texmf`, see [`LATEX.md`](LATEX.md). Optional userdata archive:
+
+- `latex-userdata.tgz` (from `./scripts/gather/gather-latex-setup.sh --archive`)
 
 Optional LMTO archives (not committed; gitignored if you add patterns):
 
@@ -27,7 +30,7 @@ Optional LMTO archives (not committed; gitignored if you add patterns):
 
 ```bash
 cp ~/Downloads/AIR_AT_IMP/src/lmto5.04.6*.tar.gz files/
-./scripts/bootstrap-lmto.sh unpack
+./scripts/bootstrap/bootstrap-lmto.sh unpack
 ```
 
 ## Download links
@@ -68,4 +71,4 @@ cp ~/Downloads/cursor_*.deb files/
 
 **Alternative (no `.deb` in `files/`):** official apt repo after key install — see  
 https://downloads.cursor.com/aptrepo and key https://downloads.cursor.com/keys/anysphere.asc  
-(not wired into the playbook yet; when debs are enabled, `.deb` + `--tags debs` / `./scripts/bootstrap-debs.sh` is the path).
+(not wired into the playbook yet; when debs are enabled, `.deb` + `--tags debs` / `./scripts/bootstrap/bootstrap-debs.sh` is the path).

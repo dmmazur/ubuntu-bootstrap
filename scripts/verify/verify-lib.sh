@@ -4,7 +4,8 @@
 
 set -euo pipefail
 
-VERIFY_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Repo root = parent of scripts/ (this file lives in scripts/verify/)
+VERIFY_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 GROUP_VARS="${VERIFY_ROOT}/group_vars/all.yml"
 HOME_DIR="${HOME}"
 if [[ -n "${SUDO_USER:-}" && "${SUDO_USER}" != "root" ]]; then
@@ -221,6 +222,60 @@ verify_lab() {
     [[ -z "${pkg}" ]] && continue
     check_apt "${pkg}"
   done < <(yaml_list apt_packages_lab)
+}
+
+verify_latex() {
+  section "latex"
+  if [[ "$(yaml_bool install_latex)" != "true" ]]; then
+    skipped "install_latex is false — section disabled"
+    return 0
+  fi
+
+  section "latex-apt"
+  if [[ "$(yaml_bool latex_install_apt)" == "true" ]]; then
+    local pkg
+    while IFS= read -r pkg; do
+      [[ -z "${pkg}" ]] && continue
+      check_apt "${pkg}"
+    done < <(yaml_list apt_packages_latex)
+    if command -v pdflatex >/dev/null 2>&1; then
+      ok "pdflatex: $(command -v pdflatex)"
+    else
+      missing "pdflatex not on PATH"
+    fi
+    if command -v kpsewhich >/dev/null 2>&1 && kpsewhich article.cls >/dev/null 2>&1; then
+      ok "kpsewhich article.cls → $(kpsewhich article.cls)"
+    else
+      missing "kpsewhich article.cls failed"
+    fi
+    if command -v latexmk >/dev/null 2>&1; then
+      ok "latexmk: $(command -v latexmk)"
+    else
+      missing "latexmk not on PATH"
+    fi
+    if command -v biber >/dev/null 2>&1; then
+      ok "biber: $(command -v biber)"
+    else
+      missing "biber not on PATH"
+    fi
+  else
+    skipped "latex_install_apt is false"
+  fi
+
+  section "latex-texmf"
+  if [[ "$(yaml_bool latex_ensure_texmf)" == "true" ]]; then
+    check_file "TEXMFHOME ~/texmf" "${HOME_DIR}/texmf"
+    check_file "~/texmf/tex/latex" "${HOME_DIR}/texmf/tex/latex"
+  else
+    skipped "latex_ensure_texmf is false"
+  fi
+
+  section "latex-smoke"
+  if [[ "$(yaml_bool latex_run_smoke)" == "true" ]]; then
+    check_file "smoke.pdf" "${HOME_DIR}/TeX/smoke/smoke.pdf"
+  else
+    skipped "latex_run_smoke is false"
+  fi
 }
 
 verify_snaps() {
@@ -495,6 +550,7 @@ verify_all() {
   printf 'home:       %s\n' "${HOME_DIR}"
   verify_common
   verify_lab
+  verify_latex
   verify_snaps
   verify_flatpak
   verify_debs

@@ -4,9 +4,9 @@
 # Copy the generated report (and optional archive) to the new PC for reinstall.
 #
 # Usage (on the machine WITH LMTO already installed):
-#   ./scripts/gather-lmto-setup.sh
-#   ./scripts/gather-lmto-setup.sh -o ~/Downloads/lmto-setup-report.txt
-#   ./scripts/gather-lmto-setup.sh --archive   # pack key configs (not full ~/src)
+#   ./scripts/gather/gather-lmto-setup.sh
+#   ./scripts/gather/gather-lmto-setup.sh -o ~/Downloads/lmto-setup-report.txt
+#   ./scripts/gather/gather-lmto-setup.sh --archive   # pack key configs (not full ~/src)
 #
 # Safe: read-only probes + optional tar of small config files (no sudo for most checks).
 
@@ -303,7 +303,7 @@ A) Copy LMTO source tree
 B) Intel oneAPI (apt — preferred in this repo)
    sudo apt install intel-oneapi-compiler-fortran intel-oneapi-mkl-devel
    source /opt/intel/oneapi/setvars.sh
-   # Or use: ./scripts/bootstrap-lmto.sh
+   # Or use: ./scripts/bootstrap/bootstrap-lmto.sh
 
 C) Match build options from systemoptions / localoptions (section 6)
    - Makefile: typically MAK/ifx_mkl.mak
@@ -320,7 +320,7 @@ E) NFS (if institute network)
    - Symlinks ~/dep24, ~/R_dep24, ~/TeX_dep24 when /dep24 is mounted
 
 F) Verify on new machine
-   ./scripts/verify-lmto.sh
+   ./scripts/verify/verify-lmto.sh
    lmt -h   # or a small test case
    ifx --version
 

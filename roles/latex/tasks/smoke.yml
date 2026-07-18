@@ -1,0 +1,76 @@
+---
+# Phase 3: compile a tiny article with pdflatex (smoke test).
+# Tag: latex-smoke
+
+- name: ">>> LATEX SMOKE — pdflatex in {{ latex_smoke_dir }}"
+  ansible.builtin.debug:
+    msg: "Writes smoke.tex / smoke.pdf under {{ latex_smoke_dir }}"
+
+- name: Ensure LaTeX smoke directory exists
+  ansible.builtin.file:
+    path: "{{ latex_smoke_dir }}"
+    state: directory
+    owner: "{{ bootstrap_user }}"
+    group: "{{ bootstrap_group }}"
+    mode: "0755"
+
+- name: Write minimal smoke.tex
+  ansible.builtin.copy:
+    dest: "{{ latex_smoke_dir }}/smoke.tex"
+    owner: "{{ bootstrap_user }}"
+    group: "{{ bootstrap_group }}"
+    mode: "0644"
+    content: |
+      \documentclass{article}
+      \begin{document}
+      ubuntu-bootstrap LaTeX smoke test.
+      \end{document}
+
+- name: Run pdflatex smoke (logged)
+  ansible.builtin.shell: |
+    set -uo pipefail
+    mkdir -p "{{ bootstrap_log_dir }}"
+    logf="{{ bootstrap_log_dir }}/pdflatex-smoke.log"
+    run_as_user() {
+      if [ "$(id -u)" -eq 0 ] && [ "{{ bootstrap_user }}" != root ]; then
+        runuser -u "{{ bootstrap_user }}" --preserve-environment -- "$@"
+      else
+        "$@"
+      fi
+    }
+    set +e
+    {
+      printf '# %s  pdflatex smoke.tex\n' "$(date -Iseconds)"
+      # Nonstop mode; two passes not needed for this tiny file.
+      run_as_user pdflatex -interaction=nonstopmode -halt-on-error smoke.tex
+    } 2>&1 | tee -a "${logf}"
+    rc=${PIPESTATUS[0]}
+    set -e
+    exit "${rc}"
+  args:
+    chdir: "{{ latex_smoke_dir }}"
+    executable: /bin/bash
+  environment:
+    HOME: "{{ bootstrap_home }}"
+
+- name: Verify smoke.pdf was created
+  ansible.builtin.stat:
+    path: "{{ latex_smoke_dir }}/smoke.pdf"
+  register: latex_smoke_pdf
+
+- name: Fail if smoke.pdf missing
+  ansible.builtin.assert:
+    that:
+      - latex_smoke_pdf.stat.exists
+      - latex_smoke_pdf.stat.size | int > 0
+    fail_msg: >-
+      {{ latex_smoke_dir }}/smoke.pdf was not created.
+      Check {{ bootstrap_log_dir }}/pdflatex-smoke.log and re-run --tags latex-smoke.
+
+- name: Reclaim ownership of smoke dir
+  ansible.builtin.file:
+    path: "{{ latex_smoke_dir }}"
+    state: directory
+    owner: "{{ bootstrap_user }}"
+    group: "{{ bootstrap_group }}"
+    recurse: true

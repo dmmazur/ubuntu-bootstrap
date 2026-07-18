@@ -15,8 +15,8 @@
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=scripts/lib.sh
-source "${SCRIPT_DIR}/scripts/lib.sh"
+# shellcheck source=scripts/bootstrap/lib.sh
+source "${SCRIPT_DIR}/scripts/bootstrap/lib.sh"
 
 log "ubuntu-bootstrap — full install"
 ensure_prerequisites

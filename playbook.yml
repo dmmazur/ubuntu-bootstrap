@@ -1,8 +1,8 @@
 ---
 # Local Ubuntu workstation bootstrap.
-# Tags: common, snaps, flatpak, debs, claude, chrome, ollama, lab, lmto
+# Tags: common, snaps, flatpak, debs, claude, chrome, ollama, lab, latex, lmto
 # Tip: add -v or -vv for more Ansible detail.
-# Command logs: {{ bootstrap_log_dir }} (see scripts/lib.sh / /tmp/ubuntu-bootstrap-latest)
+# Command logs: {{ bootstrap_log_dir }} (see scripts/bootstrap/lib.sh / /tmp/ubuntu-bootstrap-latest)
 
 - name: Bootstrap local Ubuntu
   hosts: local
@@ -21,7 +21,7 @@
       ansible.builtin.debug:
         msg: >-
           Command logs → {{ bootstrap_log_dir }}
-          (symlink /tmp/ubuntu-bootstrap-latest when using ./scripts/bootstrap-*.sh)
+          (symlink /tmp/ubuntu-bootstrap-latest when using ./scripts/bootstrap/*.sh)
       tags: [always]
 
     - name: ">>> COMMON — {{ apt_packages_common | length }} apt package(s)"
@@ -222,6 +222,18 @@
         daemon_reload: true
       when: install_ollama | bool
       tags: [ollama]
+
+    - name: ">>> LATEX — TeX Live apt (self-contained)"
+      ansible.builtin.debug:
+        msg: "LaTeX role: {{ apt_packages_latex | length }} apt package(s), texmf={{ latex_texmf_dir }}"
+      when: install_latex | bool
+      tags: [latex, latex-apt, latex-texmf, latex-smoke]
+
+    - name: Install and configure LaTeX
+      ansible.builtin.include_role:
+        name: latex
+      when: install_latex | bool
+      tags: [latex, latex-apt, latex-texmf, latex-smoke]
 
     - name: ">>> LMTO — phased install (intel / unpack / build / xscr)"
       ansible.builtin.debug:

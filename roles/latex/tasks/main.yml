@@ -1,0 +1,38 @@
+---
+# LaTeX / TeX Live — self-contained (no lab/LMTO/common dependency).
+# Phases: latex-apt | latex-texmf | latex-smoke
+# Full: --tags latex
+# Follow-up (not here): editor extensions (Cursor/VS Code LaTeX Workshop).
+
+- name: ">>> LATEX role — phases apt / texmf / smoke"
+  ansible.builtin.debug:
+    msg:
+      apt: "{{ latex_install_apt }}"
+      texmf: "{{ latex_ensure_texmf }}"
+      smoke: "{{ latex_run_smoke }}"
+      packages: "{{ apt_packages_latex | length }}"
+  tags: [latex, latex-apt, latex-texmf, latex-smoke]
+
+- name: Include LaTeX apt packages phase
+  ansible.builtin.include_tasks:
+    file: apt.yml
+    apply:
+      tags: [latex, latex-apt]
+  when: latex_install_apt | bool
+  tags: [latex, latex-apt]
+
+- name: Include LaTeX user texmf phase
+  ansible.builtin.include_tasks:
+    file: texmf.yml
+    apply:
+      tags: [latex, latex-texmf]
+  when: latex_ensure_texmf | bool
+  tags: [latex, latex-texmf]
+
+- name: Include LaTeX pdflatex smoke test
+  ansible.builtin.include_tasks:
+    file: smoke.yml
+    apply:
+      tags: [latex, latex-smoke]
+  when: latex_run_smoke | bool
+  tags: [latex, latex-smoke]

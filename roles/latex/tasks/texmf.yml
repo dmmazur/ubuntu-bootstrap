@@ -1,0 +1,37 @@
+---
+# Phase 2: user TEXMFHOME tree + optional userdata archive from files/.
+# Tag: latex-texmf
+
+- name: ">>> LATEX TEXMF — {{ latex_texmf_dir }}"
+  ansible.builtin.debug:
+    msg:
+      texmf: "{{ latex_texmf_dir }}"
+      archive: "{{ latex_userdata_archive }}"
+
+- name: Create standard ~/texmf layout
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ bootstrap_user }}"
+    group: "{{ bootstrap_group }}"
+    mode: "0755"
+  loop:
+    - "{{ latex_texmf_dir }}"
+    - "{{ latex_texmf_dir }}/tex/latex"
+    - "{{ latex_texmf_dir }}/bibtex/bib"
+    - "{{ latex_texmf_dir }}/bibtex/bst"
+    - "{{ latex_texmf_dir }}/fonts"
+
+- name: Stat optional latex userdata archive
+  ansible.builtin.stat:
+    path: "{{ latex_userdata_archive }}"
+  register: latex_userdata_stat
+
+- name: Unpack latex userdata archive into home
+  ansible.builtin.unarchive:
+    src: "{{ latex_userdata_archive }}"
+    dest: "{{ bootstrap_home }}"
+    remote_src: true
+    owner: "{{ bootstrap_user }}"
+    group: "{{ bootstrap_group }}"
+  when: latex_userdata_stat.stat.exists | default(false)

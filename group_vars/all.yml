@@ -11,12 +11,22 @@ install_flatpak: false
 install_debs: false
 # Lab/scientific extras (NFS, PostScript viewer, terminals, etc.)
 enable_lab_packages: true
+# LaTeX / TeX Live via apt (dep24 curated set) — self-contained section
+install_latex: true
 # Full LMTO stack (phased: intel / unpack / build / xscr — see files/LMTO.md)
 install_lmto: true
 
-# Command logs: scripts/lib.sh sets BOOTSTRAP_LOG_DIR (mktemp under /tmp).
+# Command logs: scripts/bootstrap/lib.sh sets BOOTSTRAP_LOG_DIR (mktemp under /tmp).
 # Symlink: /tmp/ubuntu-bootstrap-latest → latest run. Per-command files: make.log, apt-*.log, …
 bootstrap_log_dir: "{{ lookup('env', 'BOOTSTRAP_LOG_DIR') | default('/tmp/ubuntu-bootstrap-manual', true) }}"
+
+# Shared home/user (sudo --preserve-env=HOME). Used by LaTeX, LMTO, and other roles.
+bootstrap_home: "{{ ansible_facts['env']['HOME'] | default(lookup('env', 'HOME'), true) }}"
+bootstrap_user: >-
+  {{ ansible_facts['env']['SUDO_USER']
+     | default(lookup('env', 'SUDO_USER'), true)
+     | default(bootstrap_home | basename, true) }}
+bootstrap_group: "{{ bootstrap_user }}"
 
 # --- apt: baseline desktop/dev tools ---
 apt_packages_common:
@@ -43,6 +53,32 @@ apt_packages_lab:
   - texinfo
   - tilix
   - traceroute
+
+# --- apt: LaTeX (dep24 manual packages + latexmk/biber; self-contained) ---
+# Matches ~/Downloads/dep24/latex-setup-report-*.txt apt-mark list.
+# latexmk + biber were missing on dep24 but are small and useful.
+apt_packages_latex:
+  - texlive-latex-base
+  - texlive-latex-recommended
+  - texlive-latex-extra
+  - texlive-fonts-extra
+  - texlive-font-utils
+  - texlive-extra-utils
+  - texlive-bibtex-extra
+  - texlive-publishers
+  - texlive-science
+  - texlive-lang-cyrillic
+  - texinfo
+  - latexmk
+  - biber
+
+# LaTeX phase toggles (tags: latex-apt | latex-texmf | latex-smoke)
+latex_install_apt: true
+latex_ensure_texmf: true
+latex_texmf_dir: "{{ bootstrap_home }}/texmf"
+latex_userdata_archive: "{{ playbook_dir }}/files/latex-userdata.tgz"
+latex_run_smoke: true
+latex_smoke_dir: "{{ bootstrap_home }}/TeX/smoke"
 
 # --- apt: LMTO build/runtime prerequisites ---
 # (subset overlaps lab/common; safe to install again — apt is idempotent)
@@ -108,14 +144,6 @@ ollama_tarball_url: https://ollama.com/download/ollama-linux-amd64.tar.zst
 # Full stack: tag lmto   Reference: AIR install (LSYSTEM=ifx)
 # =============================================================================
 
-# Prefer login user home when playbook is run via sudo --preserve-env=HOME.
-# bootstrap_user: SUDO_USER when present; else basename of HOME (not root from ansible_user_id).
-bootstrap_home: "{{ ansible_facts['env']['HOME'] | default(lookup('env', 'HOME'), true) }}"
-bootstrap_user: >-
-  {{ ansible_facts['env']['SUDO_USER']
-     | default(lookup('env', 'SUDO_USER'), true)
-     | default(bootstrap_home | basename, true) }}
-bootstrap_group: "{{ bootstrap_user }}"
 lmto_src_dir: "{{ bootstrap_home }}/src"
 
 # Phase toggles (also runnable separately via tags / bootstrap-lmto.sh <phase>)

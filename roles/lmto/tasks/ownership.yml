@@ -1,6 +1,6 @@
 ---
 # Reclaim LMTO paths under the login home user.
-# Safe to run anytime: ./scripts/bootstrap-lmto.sh ownership
+# Safe to run anytime: ./scripts/bootstrap/bootstrap-lmto.sh ownership
 # Also invoked from unpack/build/xscr `always:` so a failed make still
 # leaves files deletable by the home user.
 

@@ -3,8 +3,8 @@
 
 set -euo pipefail
 
-# Repo root = parent of scripts/
-BOOTSTRAP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Repo root = parent of scripts/ (this file lives in scripts/bootstrap/)
+BOOTSTRAP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${BOOTSTRAP_ROOT}"
 
 export PATH="${HOME}/.local/bin:${PATH}"

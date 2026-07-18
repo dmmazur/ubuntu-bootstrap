@@ -4,14 +4,14 @@ Phased install — each step can run alone:
 
 | Phase | Script / tag | What it does |
 |-------|--------------|--------------|
-| 1 Intel | `./scripts/bootstrap-lmto.sh intel` (`lmto-intel`) | Intel apt repo, `ifx`, MKL, `~/.bashrc` (`LSYSTEM` + `setvars`), `/etc/profile.d/lmto.sh` |
-| 2 Unpack | `./scripts/bootstrap-lmto.sh unpack` (`lmto-unpack`) | Create `~/src`, unpack base then patch archives |
-| 2b R dir | `./scripts/bootstrap-lmto.sh rdir` (`lmto-rdir`) | Create `~/R` for LMTO cases (`lmt` scratch paths) |
-| 3 Build | `./scripts/bootstrap-lmto.sh build` (`lmto-build`) | apt deps, optional `/scratch`, `./configure`, edit `localoptions`, `make` |
-| 4 Xscr | `./scripts/bootstrap-lmto.sh xscr` (`lmto-xscr`) | Copy `SCRIPT/Xscr` → `~/bin/Xscr` + symlink in `~/bin/ifx/` |
-| 5 Test | `./scripts/bootstrap-lmto.sh test` (`lmto-test`) | Wipe `~/R/Fe`, run bare `lmt` with BCC Fe answers → `lmt.lmt` |
-| Ownership | `./scripts/bootstrap-lmto.sh ownership` (`lmto-ownership`) | `chown` `~/src` `~/bin` `~/lib` to the login user (also runs after unpack/build even on failure) |
-| All | `./scripts/bootstrap-lmto.sh` (`lmto`) | All enabled phases |
+| 1 Intel | `./scripts/bootstrap/bootstrap-lmto.sh intel` (`lmto-intel`) | Intel apt repo, `ifx`, MKL, `~/.bashrc` (`LSYSTEM` + `setvars`), `/etc/profile.d/lmto.sh` |
+| 2 Unpack | `./scripts/bootstrap/bootstrap-lmto.sh unpack` (`lmto-unpack`) | Create `~/src`, unpack base then patch archives |
+| 2b R dir | `./scripts/bootstrap/bootstrap-lmto.sh rdir` (`lmto-rdir`) | Create `~/R` for LMTO cases (`lmt` scratch paths) |
+| 3 Build | `./scripts/bootstrap/bootstrap-lmto.sh build` (`lmto-build`) | apt deps, optional `/scratch`, `./configure`, edit `localoptions`, `make` |
+| 4 Xscr | `./scripts/bootstrap/bootstrap-lmto.sh xscr` (`lmto-xscr`) | Copy `SCRIPT/Xscr` → `~/bin/Xscr` + symlink in `~/bin/ifx/` |
+| 5 Test | `./scripts/bootstrap/bootstrap-lmto.sh test` (`lmto-test`) | Wipe `~/R/Fe`, run bare `lmt` with BCC Fe answers → `lmt.lmt` |
+| Ownership | `./scripts/bootstrap/bootstrap-lmto.sh ownership` (`lmto-ownership`) | `chown` `~/src` `~/bin` `~/lib` to the login user (also runs after unpack/build even on failure) |
+| All | `./scripts/bootstrap/bootstrap-lmto.sh` (`lmto`) | All enabled phases |
 
 ## Command logs
 
@@ -26,7 +26,7 @@ Bootstrap scripts tee console output and heavy commands into a temp directory:
   lmt-Fe.log                    # Fe smoke test
 ```
 
-Override with `BOOTSTRAP_LOG_DIR=/path/to/dir ./scripts/bootstrap-lmto.sh`.
+Override with `BOOTSTRAP_LOG_DIR=/path/to/dir ./scripts/bootstrap/bootstrap-lmto.sh`.
 
 ## Archives (phase 2)
 
@@ -79,7 +79,7 @@ lmto_scratch_enable: true
 ```
 
 ```bash
-./scripts/bootstrap-lmto.sh build
+./scripts/bootstrap/bootstrap-lmto.sh build
 ```
 
 ## NFS
@@ -89,7 +89,7 @@ lmto_scratch_enable: true
 ## Verify
 
 ```bash
-./scripts/verify-lmto.sh
+./scripts/verify/verify-lmto.sh
 ```
 
 Checks each phase (intel / unpack / rdir / build / xscr / test) against `group_vars`.
@@ -114,6 +114,6 @@ Success artifact: `~/R/Fe/lmt.lmt`. Skip with `lmto_run_fe_test: false`.
 ### Gather setup from another machine
 
 ```bash
-./scripts/gather-lmto-setup.sh
-./scripts/gather-lmto-setup.sh --archive
+./scripts/gather/gather-lmto-setup.sh
+./scripts/gather/gather-lmto-setup.sh --archive
 ```
