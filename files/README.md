@@ -28,6 +28,12 @@ Optional LMTO archives (not committed; gitignored if you add patterns):
 - `lmto5.04.6.tar.gz`
 - `lmto5.04.6p.tar.gz`
 
+Optional LMTO prebuilt SCRIPT binaries for the xscr phase (if not already in `~/src/SCRIPT/`):
+
+- `Xscr`
+- `grf2eps`
+- `grfonts`
+
 ```bash
 cp ~/Downloads/AIR_AT_IMP/src/lmto5.04.6*.tar.gz files/
 ./scripts/bootstrap/bootstrap-lmto.sh unpack

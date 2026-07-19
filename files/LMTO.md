@@ -8,7 +8,7 @@ Phased install — each step can run alone:
 | 2 Unpack | `./scripts/bootstrap/bootstrap-lmto.sh unpack` (`lmto-unpack`) | Create `~/src`, unpack base then patch archives |
 | 2b R dir | `./scripts/bootstrap/bootstrap-lmto.sh rdir` (`lmto-rdir`) | Create `~/R` for LMTO cases (`lmt` scratch paths) |
 | 3 Build | `./scripts/bootstrap/bootstrap-lmto.sh build` (`lmto-build`) | apt deps, optional `/scratch`, `./configure`, edit `localoptions`, `make` |
-| 4 Xscr | `./scripts/bootstrap/bootstrap-lmto.sh xscr` (`lmto-xscr`) | Copy `SCRIPT/Xscr` → `~/bin/Xscr` + symlink in `~/bin/ifx/` |
+| 4 Xscr | `./scripts/bootstrap/bootstrap-lmto.sh xscr` (`lmto-xscr`) | Copy `SCRIPT/{Xscr,grf2eps,grfonts}` → `~/bin/` + symlinks in `~/bin/ifx/` (also searches `files/`) |
 | 5 Test | `./scripts/bootstrap/bootstrap-lmto.sh test` (`lmto-test`) | Wipe `~/R/Fe`, run bare `lmt` with BCC Fe answers → `lmt.lmt` |
 | Ownership | `./scripts/bootstrap/bootstrap-lmto.sh ownership` (`lmto-ownership`) | `chown` `~/src` `~/bin` `~/lib` to the login user (also runs after unpack/build even on failure) |
 | All | `./scripts/bootstrap/bootstrap-lmto.sh` (`lmto`) | All enabled phases |
@@ -38,6 +38,18 @@ lmto5.04.6p.tar.gz    # patch (includes MAK/ifx_mkl.mak)
 ```
 
 Unpack order matches `Readme.1st`: base first, patch second.
+
+## Prebuilt SCRIPT binaries (phase 4)
+
+`make` skips `GRFTOOLS` / `XSCR`. The xscr phase copies these prebuilts into `~/bin/` and symlinks them under `~/bin/$LSYSTEM/`:
+
+| Binary | Typical source |
+|--------|----------------|
+| `Xscr` | ships in `~/src/SCRIPT/Xscr` after unpack |
+| `grf2eps` | drop into `~/src/SCRIPT/` or `files/` |
+| `grfonts` | drop into `~/src/SCRIPT/` or `files/` |
+
+Search order: `{{ lmto_src_dir }}/SCRIPT`, then `files/`.
 
 ## Intel oneAPI (phase 1)
 

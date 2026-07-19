@@ -81,7 +81,7 @@ mapfile -t SYSOPT_PATHS < <(_discover_systemoptions)
   section "1) LMTO commands on PATH (wrappers + binaries)"
   for b in \
     lmt lmto orx orxs orp rixs opt fst fsx ibx zbx bbz brx \
-    cif2lmt atoms ibz f2u u2f xiq Xscr lmhelp gv make ifx ifort gfortran
+    cif2lmt atoms ibz f2u u2f xiq Xscr grf2eps grfonts lmhelp gv make ifx ifort gfortran
   do
     if command -v "${b}" >/dev/null 2>&1; then
       p="$(command -v "${b}")"

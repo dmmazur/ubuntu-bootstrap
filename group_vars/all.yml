@@ -253,6 +253,16 @@ lmto_home_symlinks:
   - src: /dep24/dmazur/TeX
     dest: "{{ bootstrap_home }}/TeX_dep24"
 
-# --- Phase 4: Xscr ---
-# Copy SCRIPT/Xscr → ~/bin/Xscr and symlink ~/bin/$LSYSTEM/Xscr
+# --- Phase 4: Xscr + graphics helpers ---
+# Copy prebuilt SCRIPT binaries → ~/bin/<name> and symlink ~/bin/$LSYSTEM/<name>.
+# Search order: SCRIPT/ (from unpack), then playbook files/ (drop-in prebuilts).
+# GRFTOOLS/XSCR are excluded from make; ship grf2eps/grfonts like Xscr.
+lmto_xscr_binaries:
+  - Xscr
+  - grf2eps
+  - grfonts
+lmto_xscr_src_dirs:
+  - "{{ lmto_src_dir }}/SCRIPT"
+  - "{{ playbook_dir }}/files"
+# Backward-compat alias (unused by tasks; kept for older docs/overrides)
 lmto_xscr_src: "{{ lmto_src_dir }}/SCRIPT/Xscr"

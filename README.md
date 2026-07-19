@@ -83,7 +83,7 @@ Section banners (`>>> COMMON`, …) and per-package task names show progress.
 | `./scripts/bootstrap/bootstrap-lmto.sh unpack` | `~/src` + unpack archives |
 | `./scripts/bootstrap/bootstrap-lmto.sh rdir` | Create `~/R` (LMTO cases) |
 | `./scripts/bootstrap/bootstrap-lmto.sh build` | configure + make |
-| `./scripts/bootstrap/bootstrap-lmto.sh xscr` | copy Xscr |
+| `./scripts/bootstrap/bootstrap-lmto.sh xscr` | copy Xscr, grf2eps, grfonts |
 | `./scripts/bootstrap/bootstrap-lmto.sh test` | Fe smoke test: wipe `~/R/Fe` + bare `lmt` |
 | `./scripts/bootstrap/bootstrap-lmto.sh ownership` | chown `~/src` `~/bin` `~/lib` → login user |
 | `./scripts/bootstrap/bootstrap-flatpak.sh` | Flatpak (`install_flatpak`, currently off) |
@@ -167,7 +167,7 @@ Writes `~/Downloads/lmto-setup-report-*.txt`. Copy `~/src` separately via rsync.
 | `lmto-unpack` | Create `~/src`, unpack base + patch archives |
 | `lmto-rdir` | Create `~/R` for LMTO cases |
 | `lmto-build` | apt deps, configure, localoptions, make (optional `/scratch` if enabled) |
-| `lmto-xscr` | Copy `SCRIPT/Xscr` → `~/bin` + `~/bin/ifx` |
+| `lmto-xscr` | Copy `SCRIPT/{Xscr,grf2eps,grfonts}` → `~/bin` + `~/bin/ifx` |
 | `lmto-test` | Wipe `~/R/Fe`, run bare `lmt` structure setup |
 | `lmto-ownership` | chown LMTO home paths to login user |
 
@@ -233,7 +233,7 @@ Defaults match the AIR workstation: **`LSYSTEM=ifx`**, archives → configure/ma
 ./scripts/bootstrap/bootstrap-lmto.sh unpack   # 2) ~/src + lmto5.04.6(.p).tar.gz
 ./scripts/bootstrap/bootstrap-lmto.sh rdir     # 2b) ~/R (cases for lmt)
 ./scripts/bootstrap/bootstrap-lmto.sh build    # 3) configure + make
-./scripts/bootstrap/bootstrap-lmto.sh xscr     # 4) SCRIPT/Xscr → ~/bin
+./scripts/bootstrap/bootstrap-lmto.sh xscr     # 4) SCRIPT/{Xscr,grf2eps,grfonts} → ~/bin
 ./scripts/bootstrap/bootstrap-lmto.sh test     # 5) wipe ~/R/Fe + lmt
 # or all:
 ./scripts/bootstrap/bootstrap-lmto.sh

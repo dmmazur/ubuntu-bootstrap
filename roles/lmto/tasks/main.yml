@@ -4,7 +4,7 @@
 #   lmto-unpack — ~/src + unpack base then patch archives
 #   lmto-rdir   — create ~/R (cases)
 #   lmto-build  — apt deps, configure, localoptions, make
-#   lmto-xscr   — copy SCRIPT/Xscr → ~/bin + ~/bin/$LSYSTEM
+#   lmto-xscr   — copy SCRIPT/{Xscr,grf2eps,grfonts} → ~/bin + ~/bin/$LSYSTEM
 #   lmto-test   — wipe ~/R/Fe + bare lmt structure setup (smoke test)
 # Full: --tags lmto
 

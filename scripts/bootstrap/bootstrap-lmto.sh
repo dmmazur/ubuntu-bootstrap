@@ -9,7 +9,7 @@ set -euo pipefail
 #   ./scripts/bootstrap/bootstrap-lmto.sh unpack       # 2) ~/src + unpack archives
 #   ./scripts/bootstrap/bootstrap-lmto.sh rdir         # 2b) create ~/R (cases)
 #   ./scripts/bootstrap/bootstrap-lmto.sh build        # 3) configure + make
-#   ./scripts/bootstrap/bootstrap-lmto.sh xscr         # 4) copy Xscr
+#   ./scripts/bootstrap/bootstrap-lmto.sh xscr         # 4) copy Xscr, grf2eps, grfonts
 #   ./scripts/bootstrap/bootstrap-lmto.sh test         # 5) wipe ~/R/Fe + bare lmt
 #   ./scripts/bootstrap/bootstrap-lmto.sh ownership    # chown ~/src ~/bin ~/lib ~/R → login user
 #

@@ -1,29 +1,20 @@
 ---
-# Phase 4: install prebuilt Xscr (AIR: ~/bin/Xscr + ~/bin/ifx/Xscr symlink)
+# Phase 4: install prebuilt SCRIPT binaries (AIR: Xscr + grf2eps + grfonts)
 # Tag: lmto-xscr
+#
+# Copies each name from SCRIPT/ (or files/) → ~/bin/<name>, then symlinks
+# into SYSBIN (~/bin/$LSYSTEM/). GRFTOOLS/XSCR are excluded from make.
 
-- name: ">>> XSCR — install prebuilt viewer from SCRIPT/Xscr"
+- name: ">>> XSCR — install prebuilt SCRIPT binaries"
   ansible.builtin.debug:
     msg:
-      src: "{{ lmto_xscr_src }}"
-      scripts_bin: "{{ bootstrap_home }}/bin/Xscr"
-      sysbin: "{{ bootstrap_home }}/bin/{{ lmto_lsystem }}/Xscr"
+      binaries: "{{ lmto_xscr_binaries }}"
+      src_dirs: "{{ lmto_xscr_src_dirs }}"
+      scripts_bin: "{{ bootstrap_home }}/bin"
+      sysbin: "{{ bootstrap_home }}/bin/{{ lmto_lsystem }}"
 
-- name: Install Xscr
+- name: Install Xscr / grf2eps / grfonts
   block:
-    - name: Require SCRIPT/Xscr
-      ansible.builtin.stat:
-        path: "{{ lmto_xscr_src }}"
-      register: lmto_xscr_stat
-
-    - name: Fail if SCRIPT/Xscr is missing
-      ansible.builtin.assert:
-        that:
-          - lmto_xscr_stat.stat.exists
-        fail_msg: >-
-          {{ lmto_xscr_src }} not found. Run --tags lmto-unpack first
-          (Xscr ships in SCRIPT/ of the LMTO package).
-
     - name: Ensure ~/bin and ~/bin/{{ lmto_lsystem }} exist
       ansible.builtin.file:
         path: "{{ item }}"
@@ -35,23 +26,11 @@
         - "{{ bootstrap_home }}/bin"
         - "{{ bootstrap_home }}/bin/{{ lmto_lsystem }}"
 
-    - name: Copy Xscr into ~/bin (scripts directory)
-      ansible.builtin.copy:
-        src: "{{ lmto_xscr_src }}"
-        dest: "{{ bootstrap_home }}/bin/Xscr"
-        mode: "0755"
-        remote_src: true
-        owner: "{{ bootstrap_user }}"
-        group: "{{ bootstrap_group }}"
-
-    - name: Symlink Xscr into SYSBIN (~/bin/{{ lmto_lsystem }}/Xscr)
-      ansible.builtin.file:
-        src: "{{ bootstrap_home }}/bin/Xscr"
-        dest: "{{ bootstrap_home }}/bin/{{ lmto_lsystem }}/Xscr"
-        state: link
-        force: true
-        owner: "{{ bootstrap_user }}"
-        group: "{{ bootstrap_group }}"
+    - name: Install each SCRIPT binary
+      ansible.builtin.include_tasks: xscr_one.yml
+      loop: "{{ lmto_xscr_binaries }}"
+      loop_control:
+        loop_var: lmto_xscr_name
 
   always:
     - name: Reclaim ownership after Xscr

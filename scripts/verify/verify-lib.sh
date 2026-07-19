@@ -503,16 +503,20 @@ verify_lmto() {
 
   section "lmto-xscr"
   if [[ "$(yaml_bool lmto_install_xscr)" == "true" ]]; then
-    if [[ -x "${HOME_DIR}/bin/Xscr" ]]; then
-      ok "~/bin/Xscr"
-    else
-      missing "~/bin/Xscr"
-    fi
-    if [[ -e "${HOME_DIR}/bin/${lsystem}/Xscr" || -L "${HOME_DIR}/bin/${lsystem}/Xscr" ]]; then
-      ok "~/bin/${lsystem}/Xscr"
-    else
-      missing "~/bin/${lsystem}/Xscr"
-    fi
+    local bin
+    # Defaults match group_vars lmto_xscr_binaries
+    for bin in Xscr grf2eps grfonts; do
+      if [[ -x "${HOME_DIR}/bin/${bin}" ]]; then
+        ok "~/bin/${bin}"
+      else
+        missing "~/bin/${bin}"
+      fi
+      if [[ -e "${HOME_DIR}/bin/${lsystem}/${bin}" || -L "${HOME_DIR}/bin/${lsystem}/${bin}" ]]; then
+        ok "~/bin/${lsystem}/${bin}"
+      else
+        missing "~/bin/${lsystem}/${bin}"
+      fi
+    done
   else
     skipped "lmto_install_xscr is false"
   fi

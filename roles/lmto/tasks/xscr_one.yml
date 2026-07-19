@@ -1,0 +1,47 @@
+---
+# Install one prebuilt binary ({{ lmto_xscr_name }}) from SCRIPT/ or files/.
+# Called from xscr.yml with loop_var lmto_xscr_name.
+
+- name: "Probe source candidates for {{ lmto_xscr_name }}"
+  ansible.builtin.stat:
+    path: "{{ item }}/{{ lmto_xscr_name }}"
+  register: lmto_xscr_candidates
+  loop: "{{ lmto_xscr_src_dirs }}"
+  loop_control:
+    label: "{{ item }}/{{ lmto_xscr_name }}"
+
+- name: "Collect existing sources for {{ lmto_xscr_name }}"
+  ansible.builtin.set_fact:
+    lmto_xscr_matches: "{{ lmto_xscr_candidates.results | selectattr('stat.exists') | list }}"
+
+- name: "Fail if {{ lmto_xscr_name }} is missing"
+  ansible.builtin.assert:
+    that:
+      - lmto_xscr_matches | length > 0
+    fail_msg: >-
+      {{ lmto_xscr_name }} not found under {{ lmto_xscr_src_dirs | join(' or ') }}.
+      Place the prebuilt binary in SCRIPT/ (or files/) and re-run --tags lmto-xscr.
+      (Xscr ships in SCRIPT/; add grf2eps and grfonts the same way —
+      GRFTOOLS/XSCR are not built by make.)
+
+- name: "Pick first source for {{ lmto_xscr_name }}"
+  ansible.builtin.set_fact:
+    lmto_xscr_src_picked: "{{ lmto_xscr_matches[0].item }}/{{ lmto_xscr_name }}"
+
+- name: "Copy {{ lmto_xscr_name }} into ~/bin"
+  ansible.builtin.copy:
+    src: "{{ lmto_xscr_src_picked }}"
+    dest: "{{ bootstrap_home }}/bin/{{ lmto_xscr_name }}"
+    mode: "0755"
+    remote_src: true
+    owner: "{{ bootstrap_user }}"
+    group: "{{ bootstrap_group }}"
+
+- name: "Symlink {{ lmto_xscr_name }} into SYSBIN"
+  ansible.builtin.file:
+    src: "{{ bootstrap_home }}/bin/{{ lmto_xscr_name }}"
+    dest: "{{ bootstrap_home }}/bin/{{ lmto_lsystem }}/{{ lmto_xscr_name }}"
+    state: link
+    force: true
+    owner: "{{ bootstrap_user }}"
+    group: "{{ bootstrap_group }}"
