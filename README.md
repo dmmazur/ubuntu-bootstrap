@@ -19,6 +19,7 @@ cd ubuntu-bootstrap
 ./scripts/bootstrap/bootstrap-snaps.sh
 ./scripts/bootstrap/bootstrap-claude.sh
 ./scripts/bootstrap/bootstrap-chrome.sh
+./scripts/bootstrap/bootstrap-dotnet.sh
 ./scripts/bootstrap/bootstrap-lmto.sh
 # ./scripts/bootstrap/bootstrap-debs.sh   # off by default (install_debs: false)
 ```
@@ -41,6 +42,7 @@ Verbose Ansible output: `BOOTSTRAP_VERBOSE=1 ./bootstrap.sh`
 | `install_latex_editors` | `true` | `latex-editors` (LaTeX Workshop for Cursor/VS Code) |
 | `install_claude_desktop` | `true` | `claude` |
 | `install_google_chrome` | `true` | `chrome` |
+| `install_dotnet_sdk` | `true` | `dotnet` (.NET 8 SDK via Ubuntu apt) |
 | `install_lmto` | `true` | `lmto` |
 | `lmto_nfs_enable` | `false` | NFS mount + `/dep24` convenience links |
 | `install_debs` | `false` | Cursor / VeraCrypt from `files/` |
@@ -78,6 +80,7 @@ Section banners (`>>> COMMON`, …) and per-package task names show progress.
 | `./scripts/bootstrap/bootstrap-debs.sh` | Cursor, VeraCrypt `.debs` (`install_debs`, currently off) |
 | `./scripts/bootstrap/bootstrap-claude.sh` | Claude Desktop |
 | `./scripts/bootstrap/bootstrap-chrome.sh` | Google Chrome |
+| `./scripts/bootstrap/bootstrap-dotnet.sh` | .NET 8 SDK (`dotnet-sdk-8.0`) |
 | `./scripts/bootstrap/bootstrap-lmto.sh` | LMTO (all phases) |
 | `./scripts/bootstrap/bootstrap-lmto.sh intel` | Intel apt + bashrc only |
 | `./scripts/bootstrap/bootstrap-lmto.sh unpack` | `~/src` + unpack archives |
@@ -103,6 +106,7 @@ Read expectations from `group_vars/all.yml` and report **OK / MISSING / SKIP** (
 ./scripts/verify/verify-lmto.sh           # Intel, ~/src, binaries, profile, scratch, symlinks, NFS
 ./scripts/verify/verify-claude.sh
 ./scripts/verify/verify-chrome.sh
+./scripts/verify/verify-dotnet.sh
 ./scripts/verify/verify-debs.sh           # SKIP when install_debs is false
 ./scripts/verify/verify-flatpak.sh
 ./scripts/verify/verify-ollama.sh
@@ -119,6 +123,7 @@ Read expectations from `group_vars/all.yml` and report **OK / MISSING / SKIP** (
 | `./scripts/verify/verify-debs.sh` | Cursor / VeraCrypt |
 | `./scripts/verify/verify-claude.sh` | Claude Desktop + apt repo files |
 | `./scripts/verify/verify-chrome.sh` | Chrome + apt repo files |
+| `./scripts/verify/verify-dotnet.sh` | .NET SDK apt package + `dotnet` CLI |
 | `./scripts/verify/verify-lmto.sh` | LMTO apt/Intel/`~/src`/binaries/links/NFS |
 | `./scripts/verify/verify-flatpak.sh` | Flatpak apps |
 | `./scripts/verify/verify-ollama.sh` | Ollama binary + systemd |
@@ -161,6 +166,7 @@ Writes `~/Downloads/lmto-setup-report-*.txt`. Copy `~/src` separately via rsync.
 | `debs` | Cursor, VeraCrypt from `files/` (`install_debs`, currently off) |
 | `claude` | Claude Desktop apt repo + package |
 | `chrome` | Google Chrome apt repo + package |
+| `dotnet` | .NET 8 SDK (`dotnet-sdk-8.0` from Ubuntu apt) |
 | `ollama` | Ollama tarball + systemd (`install_ollama`, currently off) |
 | `lmto` | Full LMTO stack (all phases below) |
 | `lmto-intel` | Intel oneAPI apt + `~/.bashrc` LSYSTEM/setvars |

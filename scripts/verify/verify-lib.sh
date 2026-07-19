@@ -388,6 +388,27 @@ verify_chrome() {
   check_apt google-chrome-stable
 }
 
+verify_dotnet() {
+  section "dotnet-sdk"
+  if [[ "$(yaml_bool install_dotnet_sdk)" != "true" ]]; then
+    skipped "install_dotnet_sdk is false — section disabled"
+    return 0
+  fi
+  local pkg ver
+  pkg="$(yaml_scalar dotnet_sdk_package)"
+  ver="$(yaml_scalar dotnet_sdk_version)"
+  [[ -z "${pkg}" ]] && pkg="dotnet-sdk-8.0"
+  [[ -z "${ver}" ]] && ver="8.0"
+  check_apt "${pkg}"
+  if check_cmd "dotnet CLI" dotnet; then
+    if dotnet --list-sdks 2>/dev/null | grep -qE "^${ver}"; then
+      ok "dotnet SDK ${ver} listed"
+    else
+      missing "dotnet SDK ${ver} not in: $(dotnet --list-sdks 2>/dev/null | tr '\n' ' ')"
+    fi
+  fi
+}
+
 verify_ollama() {
   section "ollama"
   if [[ "$(yaml_bool install_ollama)" != "true" ]]; then
@@ -603,6 +624,7 @@ verify_all() {
   verify_debs
   verify_claude
   verify_chrome
+  verify_dotnet
   verify_ollama
   verify_lmto
   print_summary

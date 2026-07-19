@@ -5,6 +5,7 @@
 # --- toggles ---
 install_claude_desktop: true
 install_google_chrome: true
+install_dotnet_sdk: true
 install_ollama: false
 install_flatpak: false
 # Cursor/VeraCrypt .debs from files/ (off while testing other sections)
@@ -146,6 +147,11 @@ chrome_list: /etc/apt/sources.list.d/google-chrome.list
 chrome_repo: >-
   deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg]
   https://dl.google.com/linux/chrome/deb/ stable main
+
+# --- .NET SDK (Ubuntu 24.04+ apt feed; package name pins major version) ---
+# https://learn.microsoft.com/en-us/dotnet/core/install/linux-ubuntu-install
+dotnet_sdk_version: "8.0"
+dotnet_sdk_package: dotnet-sdk-8.0
 
 # --- Ollama (official linux amd64 tarball into /usr) ---
 ollama_tarball_url: https://ollama.com/download/ollama-linux-amd64.tar.zst

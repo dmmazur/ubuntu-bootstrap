@@ -1,6 +1,6 @@
 ---
 # Local Ubuntu workstation bootstrap.
-# Tags: common, snaps, flatpak, debs, claude, chrome, ollama, lab, latex, latex-editors, lmto
+# Tags: common, snaps, flatpak, debs, claude, chrome, dotnet, ollama, lab, latex, latex-editors, lmto
 # Tip: add -v or -vv for more Ansible detail.
 # Command logs: {{ bootstrap_log_dir }} (see scripts/bootstrap/lib.sh / /tmp/ubuntu-bootstrap-latest)
 
@@ -31,7 +31,7 @@
 
     - name: Update apt cache (logged)
       ansible.builtin.include_tasks: tasks/logged_apt_update.yml
-      tags: [common, lab, claude, chrome, lmto]
+      tags: [common, lab, claude, chrome, dotnet, lmto]
 
     - name: Install common apt packages (logged)
       ansible.builtin.include_tasks: tasks/logged_apt_install.yml
@@ -165,6 +165,21 @@
         logged_apt_update: true
       when: install_google_chrome | bool
       tags: [chrome]
+
+    - name: ">>> DOTNET — .NET {{ dotnet_sdk_version }} SDK"
+      ansible.builtin.debug:
+        msg: "Installing {{ dotnet_sdk_package }} from Ubuntu apt (24.04+ built-in feed)"
+      when: install_dotnet_sdk | bool
+      tags: [dotnet]
+
+    - name: Install .NET SDK (logged)
+      ansible.builtin.include_tasks: tasks/logged_apt_install.yml
+      vars:
+        logged_apt_name: "apt-{{ dotnet_sdk_package }}"
+        logged_apt_packages: "{{ [dotnet_sdk_package] }}"
+        logged_apt_update: true
+      when: install_dotnet_sdk | bool
+      tags: [dotnet]
 
     - name: ">>> OLLAMA"
       ansible.builtin.debug:
