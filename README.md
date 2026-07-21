@@ -36,6 +36,10 @@ Verbose Ansible output: `BOOTSTRAP_VERBOSE=1 ./bootstrap.sh`
 
 If a section fails (especially on **WSL2**), see [`troubleshooting/`](troubleshooting/README.md) — DNS/vendor repos, Intel apt poisoning later runs, snaps, LMTO `ifx` PATH, setvars warnings, clock skew, VS Code on WSL.
 
+### Uninstall / revert
+
+Per-section undo scripts live in [`uninstall/`](uninstall/README.md) (purge packages, remove vendor apt repos, LMTO hooks, etc.). Example: `./uninstall/uninstall-chrome.sh`, `./uninstall/uninstall-lmto.sh intel`.
+
 ### Current toggles (`group_vars/all.yml`)
 
 | Toggle | Default | Section |
