@@ -32,6 +32,10 @@ Optional before running:
 
 Verbose Ansible output: `BOOTSTRAP_VERBOSE=1 ./bootstrap.sh`
 
+### Troubleshooting
+
+If a section fails (especially on **WSL2**), see [`troubleshooting/`](troubleshooting/README.md) — DNS/vendor repos, Intel apt poisoning later runs, snaps, LMTO `ifx` PATH, setvars warnings, clock skew, VS Code on WSL.
+
 ### Current toggles (`group_vars/all.yml`)
 
 | Toggle | Default | Section |
