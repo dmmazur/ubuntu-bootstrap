@@ -8,16 +8,32 @@ install_google_chrome: true
 install_dotnet_sdk: true
 install_ollama: false
 install_flatpak: false
+# Snaps (VS Code, Telegram, …). On WSL, skipped unless install_snaps_on_wsl: true
+# (snapd is unreliable under WSL2 and failures used to abort the whole playbook).
+install_snaps: true
+install_snaps_on_wsl: false
 # Cursor/VeraCrypt .debs from files/ (off while testing other sections)
 install_debs: false
 # Lab/scientific extras (NFS, PostScript viewer, terminals, etc.)
 enable_lab_packages: true
+# On WSL, openssh-server postinst often breaks dpkg (no real systemd for ssh).
+# Drop it from the lab set when bootstrap_is_wsl is true (set by bootstrap scripts).
+apt_packages_lab_skip_on_wsl:
+  - openssh-server
+# Prefer IPv4 for apt (WSL often has broken IPv6 to Ubuntu mirrors)
+bootstrap_force_ipv4: true
+# Skip adding Intel oneAPI apt repo when DNS for apt.repos.intel.com is sinkholed
+lmto_intel_skip_if_unreachable: true
 # LaTeX / TeX Live via apt (dep24 curated set) — self-contained section
 install_latex: true
 # LaTeX Workshop extension for Cursor + VS Code (separate from TeX Live install)
 install_latex_editors: true
 # Full LMTO stack (phased: intel / unpack / build / xscr — see files/LMTO.md)
 install_lmto: true
+
+# Detected by ./scripts/bootstrap/*.sh and passed as -e (0/1). Defaults for manual ansible.
+bootstrap_is_wsl: false
+bootstrap_intel_dns_bad: false
 
 # Command logs: scripts/bootstrap/lib.sh sets BOOTSTRAP_LOG_DIR (mktemp under /tmp).
 # Symlink: /tmp/ubuntu-bootstrap-latest → latest run. Per-command files: make.log, apt-*.log, …

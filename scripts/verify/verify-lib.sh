@@ -218,8 +218,18 @@ verify_lab() {
     return 0
   fi
   local pkg
+  local on_wsl=0
+  if grep -qiE 'microsoft|wsl' /proc/version 2>/dev/null \
+    || grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null \
+    || [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
+    on_wsl=1
+  fi
   while IFS= read -r pkg; do
     [[ -z "${pkg}" ]] && continue
+    if [[ "${on_wsl}" -eq 1 && "${pkg}" == "openssh-server" ]]; then
+      skipped "openssh-server (skipped on WSL)"
+      continue
+    fi
     check_apt "${pkg}"
   done < <(yaml_list apt_packages_lab)
 }
@@ -322,6 +332,18 @@ verify_latex_editors() {
 
 verify_snaps() {
   section "snaps"
+  if [[ "$(yaml_bool install_snaps)" != "true" ]]; then
+    skipped "install_snaps is false — section disabled"
+    return 0
+  fi
+  if grep -qiE 'microsoft|wsl' /proc/version 2>/dev/null \
+    || grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null \
+    || [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
+    if [[ "$(yaml_bool install_snaps_on_wsl)" != "true" ]]; then
+      skipped "WSL: snaps skipped by default (install_snaps_on_wsl: false)"
+      return 0
+    fi
+  fi
   local name
   while IFS= read -r name; do
     [[ -z "${name}" ]] && continue

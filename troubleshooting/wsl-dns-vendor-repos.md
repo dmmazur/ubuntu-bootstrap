@@ -22,6 +22,10 @@ Typical reasons:
 
 Snaps / other vendor hosts can fail the same way even when Ubuntu apt still works.
 
+## Automatic mitigation
+
+Bootstrap detects sinkholed `apt.repos.intel.com` and sets `bootstrap_intel_dns_bad`. With `lmto_intel_skip_if_unreachable: true` (default), the LMTO intel phase **does not** add `oneAPI.list`, so a failed Intel fetch cannot poison apt. Fix DNS, then re-run `./scripts/bootstrap/bootstrap-lmto.sh intel`.
+
 ## Fix
 
 1. Confirm bad DNS inside WSL:

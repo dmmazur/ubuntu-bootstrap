@@ -36,6 +36,8 @@ Verbose Ansible output: `BOOTSTRAP_VERBOSE=1 ./bootstrap.sh`
 
 If a section fails (especially on **WSL2**), see [`troubleshooting/`](troubleshooting/README.md) — DNS/vendor repos, Intel apt poisoning later runs, snaps, LMTO `ifx` PATH, setvars warnings, clock skew, VS Code on WSL.
 
+Bootstrap scripts auto-harden common WSL issues: apt **ForceIPv4**, remove a poisoned Intel `oneAPI.list`, skip **snaps** and **openssh-server** on WSL, and skip Intel apt when DNS is sinkholed (see toggles below).
+
 ### Uninstall / revert
 
 Per-section undo scripts live in [`uninstall/`](uninstall/README.md) (purge packages, remove vendor apt repos, LMTO hooks, etc.). Example: `./uninstall/uninstall-chrome.sh`, `./uninstall/uninstall-lmto.sh intel`.
@@ -44,8 +46,12 @@ Per-section undo scripts live in [`uninstall/`](uninstall/README.md) (purge pack
 
 | Toggle | Default | Section |
 |--------|---------|---------|
-| *(always)* | on | `common`, `snaps` |
-| `enable_lab_packages` | `true` | `lab` |
+| *(always)* | on | `common` |
+| `install_snaps` | `true` | `snaps` (skipped on WSL unless `install_snaps_on_wsl`) |
+| `install_snaps_on_wsl` | `false` | force snaps under WSL2 |
+| `enable_lab_packages` | `true` | `lab` (`openssh-server` dropped on WSL) |
+| `bootstrap_force_ipv4` | `true` | apt `Acquire::ForceIPv4` |
+| `lmto_intel_skip_if_unreachable` | `true` | skip Intel apt when DNS sinkholed |
 | `install_latex` | `true` | `latex` (self-contained TeX Live apt) |
 | `install_latex_editors` | `true` | `latex-editors` (LaTeX Workshop for Cursor/VS Code) |
 | `install_claude_desktop` | `true` | `claude` |

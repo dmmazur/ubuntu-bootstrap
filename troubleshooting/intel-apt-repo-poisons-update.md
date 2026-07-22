@@ -23,6 +23,12 @@ Not “Ansible stopped mid-playbook only.” The intel phase left a **system-wid
 
 Every bootstrap script calls `ensure_prerequisites` → `apt-get update` first, so **all** sections fail until the bad repo is removed or the key is fixed.
 
+## Automatic mitigation
+
+`scripts/bootstrap/lib.sh` (`repair_poisoned_intel_repo`) removes `oneAPI.list` + the keyring when `apt-get update` reports Intel `NO_PUBKEY` / “not signed”.
+
+The LMTO intel phase (`roles/lmto/tasks/intel.yml`) only adds `oneAPI.list` after a non-empty keyring exists, skips the Intel apt repo when DNS is sinkholed (`lmto_intel_skip_if_unreachable`), and on failure **rescues** by deleting the list + keyring so later apt stays healthy.
+
 ## Fix
 
 Unblock apt immediately:

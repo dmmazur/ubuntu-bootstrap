@@ -18,6 +18,10 @@ On WSL2, snapd is fragile (systemd, confinement, store connectivity). Failures a
 
 Linux VS Code via snap is also a poor fit on WSL; prefer Windows VS Code + Remote-WSL ([wsl-vscode-linux-vs-windows.md](wsl-vscode-linux-vs-windows.md)).
 
+## Automatic mitigation
+
+On WSL, the playbook **skips snaps by default** (`install_snaps_on_wsl: false`). Set `install_snaps_on_wsl: true` in `group_vars/all.yml` to force them. If snaps are enabled, individual snap failures are **non-fatal** (`ignore_errors`) so other sections can continue.
+
 ## Fix / workarounds
 
 1. Confirm snapd:
@@ -40,11 +44,12 @@ sudo snap install code --classic
 ./scripts/bootstrap/bootstrap-snaps.sh
 ```
 
-4. If snaps are not needed on this host, disable them for the run (leave other sections on):
+4. If snaps are not needed on this host, leave the WSL default (already skips snaps), or set:
 
 ```yaml
-# temporary: empty list or comment snaps in group_vars/all.yml
-snaps: []
+install_snaps: false
+# or on WSL keep install_snaps: true but:
+install_snaps_on_wsl: false
 ```
 
 Or skip the tag and install GUI apps on Windows instead.

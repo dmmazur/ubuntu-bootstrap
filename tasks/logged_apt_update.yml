@@ -10,7 +10,8 @@
     set +e
     {
       printf '# %s  apt-get update\n' "$(date -Iseconds)"
-      DEBIAN_FRONTEND=noninteractive apt-get update
+      # ForceIPv4 also via /etc/apt/apt.conf.d/99ubuntu-bootstrap-force-ipv4 when enabled
+      DEBIAN_FRONTEND=noninteractive apt-get {{ '-o Acquire::ForceIPv4=true ' if (bootstrap_force_ipv4 | default(true) | bool) else '' }}update
     } 2>&1 | tee -a "${logf}"
     rc=${PIPESTATUS[0]}
     set -e

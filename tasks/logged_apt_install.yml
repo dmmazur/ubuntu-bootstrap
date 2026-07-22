@@ -15,10 +15,11 @@
     set +e
     {
       printf '# %s  apt-get install -y %s\n' "$(date -Iseconds)" "${pkgs[*]}"
+      {% set _ipv4 = '-o Acquire::ForceIPv4=true ' if (bootstrap_force_ipv4 | default(true) | bool) else '' %}
       {% if logged_apt_update | default(false) | bool %}
-      DEBIAN_FRONTEND=noninteractive apt-get update
+      DEBIAN_FRONTEND=noninteractive apt-get {{ _ipv4 }}update
       {% endif %}
-      DEBIAN_FRONTEND=noninteractive apt-get install -y "${pkgs[@]}"
+      DEBIAN_FRONTEND=noninteractive apt-get {{ _ipv4 }}install -y "${pkgs[@]}"
     } 2>&1 | tee -a "${logf}"
     rc=${PIPESTATUS[0]}
     set -e

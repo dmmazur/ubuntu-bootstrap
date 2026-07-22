@@ -24,6 +24,60 @@
           (symlink /tmp/ubuntu-bootstrap-latest when using ./scripts/bootstrap/*.sh)
       tags: [always]
 
+    - name: Detect WSL
+      ansible.builtin.shell: |
+        grep -qiE 'microsoft|wsl' /proc/version 2>/dev/null \
+          || grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null \
+          || [[ -n "${WSL_DISTRO_NAME:-}" ]]
+      args:
+        executable: /bin/bash
+      register: bootstrap_wsl_probe
+      changed_when: false
+      failed_when: false
+      tags: [always]
+
+    - name: Set bootstrap_is_wsl (CLI -e or probe)
+      ansible.builtin.set_fact:
+        bootstrap_is_wsl: >-
+          {{
+            (bootstrap_is_wsl | default(false) | bool)
+            or (bootstrap_wsl_probe.rc | default(1) | int == 0)
+          }}
+      tags: [always]
+
+    - name: Compute effective lab package list (drop openssh-server on WSL)
+      ansible.builtin.set_fact:
+        apt_packages_lab_effective: >-
+          {{
+            apt_packages_lab
+            | reject('in', apt_packages_lab_skip_on_wsl | default([]))
+            | list
+            if (bootstrap_is_wsl | default(false) | bool)
+            else apt_packages_lab
+          }}
+      tags: [lab, always]
+
+    - name: Decide whether to install snaps
+      ansible.builtin.set_fact:
+        bootstrap_do_snaps: >-
+          {{
+            (install_snaps | default(true) | bool)
+            and (
+              not (bootstrap_is_wsl | default(false) | bool)
+              or (install_snaps_on_wsl | default(false) | bool)
+            )
+          }}
+      tags: [snaps, always]
+
+    - name: Ensure apt ForceIPv4 when enabled
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/99ubuntu-bootstrap-force-ipv4
+        mode: "0644"
+        content: |
+          Acquire::ForceIPv4 "true";
+      when: bootstrap_force_ipv4 | default(true) | bool
+      tags: [always]
+
     - name: ">>> COMMON — {{ apt_packages_common | length }} apt package(s)"
       ansible.builtin.debug:
         msg: "{{ apt_packages_common }}"
@@ -40,9 +94,11 @@
         logged_apt_packages: "{{ apt_packages_common }}"
       tags: [common]
 
-    - name: ">>> LAB — {{ apt_packages_lab | length }} apt package(s)"
+    - name: ">>> LAB — {{ apt_packages_lab_effective | default(apt_packages_lab) | length }} apt package(s)"
       ansible.builtin.debug:
-        msg: "{{ apt_packages_lab }}"
+        msg:
+          packages: "{{ apt_packages_lab_effective | default(apt_packages_lab) }}"
+          wsl: "{{ bootstrap_is_wsl | default(false) }}"
       when: enable_lab_packages | bool
       tags: [lab]
 
@@ -50,7 +106,7 @@
       ansible.builtin.include_tasks: tasks/logged_apt_install.yml
       vars:
         logged_apt_name: apt-lab
-        logged_apt_packages: "{{ apt_packages_lab }}"
+        logged_apt_packages: "{{ apt_packages_lab_effective | default(apt_packages_lab) }}"
       when: enable_lab_packages | bool
       tags: [lab]
 
@@ -77,21 +133,6 @@
         label: "{{ item }}"
       when: install_flatpak | bool
       tags: [flatpak]
-
-    - name: ">>> SNAPS — {{ snaps | length }} package(s)"
-      ansible.builtin.debug:
-        msg: "{{ snaps | map(attribute='name') | list }}"
-      tags: [snaps]
-
-    - name: Install snap package
-      community.general.snap:
-        name: "{{ item.name }}"
-        classic: "{{ item.classic | default(false) }}"
-        state: present
-      loop: "{{ snaps }}"
-      loop_control:
-        label: "{{ item.name }}"
-      tags: [snaps]
 
     - name: ">>> CLAUDE DESKTOP"
       ansible.builtin.debug:
@@ -249,6 +290,53 @@
         name: latex
       when: install_latex | bool
       tags: [latex, latex-apt, latex-texmf, latex-smoke]
+
+    # Snaps late so apt/vendor sections are not blocked by snapd; before IDE
+    # extensions so VS Code (`code` snap) exists when LaTeX Workshop installs.
+    - name: ">>> SNAPS — skipped on WSL (set install_snaps_on_wsl: true to force)"
+      ansible.builtin.debug:
+        msg: >-
+          Skipping snaps on WSL (install_snaps={{ install_snaps }},
+          install_snaps_on_wsl={{ install_snaps_on_wsl }}).
+          Prefer Windows VS Code / native apps; see troubleshooting/wsl-snap-install-fails.md
+      when:
+        - install_snaps | default(true) | bool
+        - bootstrap_is_wsl | default(false) | bool
+        - not (install_snaps_on_wsl | default(false) | bool)
+      tags: [snaps]
+
+    - name: ">>> SNAPS — {{ snaps | length }} package(s)"
+      ansible.builtin.debug:
+        msg: "{{ snaps | map(attribute='name') | list }}"
+      when: bootstrap_do_snaps | default(false) | bool
+      tags: [snaps]
+
+    - name: Install snap package
+      community.general.snap:
+        name: "{{ item.name }}"
+        classic: "{{ item.classic | default(false) }}"
+        state: present
+      loop: "{{ snaps }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when: bootstrap_do_snaps | default(false) | bool
+      ignore_errors: true
+      register: bootstrap_snap_results
+      tags: [snaps]
+
+    - name: Warn about failed snap installs (non-fatal)
+      ansible.builtin.debug:
+        msg: >-
+          Snap {{ item.item.name }} failed (ignored so other sections can continue):
+          {{ item.msg | default(item.stderr | default('unknown error')) }}
+      loop: "{{ bootstrap_snap_results.results | default([]) }}"
+      loop_control:
+        label: "{{ item.item.name | default('snap') }}"
+      when:
+        - bootstrap_do_snaps | default(false) | bool
+        - bootstrap_snap_results is defined
+        - item.failed | default(false) | bool
+      tags: [snaps]
 
     - name: ">>> LATEX EDITORS — LaTeX Workshop (Cursor / VS Code)"
       ansible.builtin.debug:

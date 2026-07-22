@@ -1,56 +1,175 @@
 ---
 # Phase 1: Intel oneAPI apt repo, compiler, MKL, shell env
 # Tag: lmto-intel
+#
+# Hardening: never leave oneAPI.list without a usable keyring (that poisons
+# every later apt-get update). Skip apt when DNS is sinkholed; on any apt
+# failure, remove list + keyring in rescue.
 
 - name: ">>> INTEL — apt repository, packages, bashrc"
   ansible.builtin.debug:
     msg: "Intel Fortran={{ lmto_intel_fortran_package }} MKL={{ lmto_intel_mkl_package }}"
 
-- name: Install Intel oneAPI GPG keyring
+- name: Probe Intel apt DNS (sinkhole → RFC1918 / loopback)
   ansible.builtin.shell: |
-    set -uo pipefail
-    mkdir -p "{{ bootstrap_log_dir }}"
-    logf="{{ bootstrap_log_dir }}/intel-keyring.log"
-    set +e
-    {
-      printf '# %s  curl | gpg --dearmor → %s\n' "$(date -Iseconds)" "{{ intel_oneapi_keyring }}"
-      curl -fsSL "{{ intel_oneapi_key_url }}" \
-        | gpg --dearmor -o "{{ intel_oneapi_keyring }}"
-    } 2>&1 | tee -a "${logf}"
-    rc=${PIPESTATUS[0]}
-    set -e
-    exit "${rc}"
+    set -euo pipefail
+    host=apt.repos.intel.com
+    ips="$(getent ahosts "${host}" 2>/dev/null | awk '{print $1}' | sort -u || true)"
+    if [[ -z "${ips}" ]]; then
+      echo "unresolved"
+      exit 0
+    fi
+    for ip in ${ips}; do
+      case "${ip}" in
+        10.*|192.168.*|172.1[6-9].*|172.2[0-9].*|172.3[0-1].*|127.*|0.0.0.0|::1|fe80:*)
+          echo "sinkhole ${ip}"
+          exit 0
+          ;;
+      esac
+    done
+    echo "ok ${ips}"
   args:
-    creates: "{{ intel_oneapi_keyring }}"
     executable: /bin/bash
+  register: lmto_intel_dns_probe
+  changed_when: false
+  failed_when: false
   when: lmto_install_intel_fortran_apt | bool or lmto_install_intel_mkl_apt | bool
 
-- name: Add Intel oneAPI apt source
-  ansible.builtin.copy:
-    dest: "{{ intel_oneapi_list }}"
-    mode: "0644"
-    content: "{{ intel_oneapi_repo }}\n"
-  when: lmto_install_intel_fortran_apt | bool or lmto_install_intel_mkl_apt | bool
+- name: Decide whether Intel oneAPI apt is safe to configure
+  ansible.builtin.set_fact:
+    lmto_intel_apt_wanted: "{{ lmto_install_intel_fortran_apt | bool or lmto_install_intel_mkl_apt | bool }}"
+    lmto_intel_dns_bad_effective: >-
+      {{
+        (bootstrap_intel_dns_bad | default(false) | bool)
+        or (
+          lmto_intel_dns_probe is defined
+          and not (lmto_intel_dns_probe.skipped | default(false))
+          and ((lmto_intel_dns_probe.stdout | default('')) is match('^(sinkhole|unresolved)'))
+        )
+      }}
 
-- name: Install Intel Fortran compiler (logged)
-  ansible.builtin.include_tasks:
-    file: "{{ playbook_dir }}/tasks/logged_apt_install.yml"
-  vars:
-    logged_apt_name: "apt-{{ lmto_intel_fortran_package }}"
-    logged_apt_packages:
-      - "{{ lmto_intel_fortran_package }}"
-    logged_apt_update: true
-  when: lmto_install_intel_fortran_apt | bool
+- name: Set lmto_intel_apt_ok
+  ansible.builtin.set_fact:
+    lmto_intel_apt_ok: >-
+      {{
+        (lmto_intel_apt_wanted | bool)
+        and not (
+          (lmto_intel_skip_if_unreachable | default(true) | bool)
+          and (lmto_intel_dns_bad_effective | bool)
+        )
+      }}
 
-- name: Install Intel oneMKL (logged)
-  ansible.builtin.include_tasks:
-    file: "{{ playbook_dir }}/tasks/logged_apt_install.yml"
-  vars:
-    logged_apt_name: "apt-{{ lmto_intel_mkl_package }}"
-    logged_apt_packages:
-      - "{{ lmto_intel_mkl_package }}"
-    logged_apt_update: true
-  when: lmto_install_intel_mkl_apt | bool
+- name: Skip Intel oneAPI apt (DNS unreachable / sinkholed)
+  ansible.builtin.debug:
+    msg: >-
+      Skipping Intel apt repo/packages (DNS probe:
+      {{ lmto_intel_dns_probe.stdout | default('n/a') }};
+      bootstrap_intel_dns_bad={{ bootstrap_intel_dns_bad | default(false) }}).
+      Fix WSL DNS, then re-run: ./scripts/bootstrap/bootstrap-lmto.sh intel
+      See troubleshooting/wsl-dns-vendor-repos.md
+  when:
+    - lmto_intel_apt_wanted | bool
+    - not (lmto_intel_apt_ok | bool)
+
+- name: Configure Intel oneAPI apt (keyring → list → packages)
+  when: lmto_intel_apt_ok | bool
+  block:
+    - name: Stat existing Intel keyring
+      ansible.builtin.stat:
+        path: "{{ intel_oneapi_keyring }}"
+      register: lmto_intel_keyring_stat
+
+    - name: Remove empty or tiny Intel keyring (failed prior curl)
+      ansible.builtin.file:
+        path: "{{ intel_oneapi_keyring }}"
+        state: absent
+      when: >-
+        lmto_intel_keyring_stat.stat.exists | default(false)
+        and (lmto_intel_keyring_stat.stat.size | default(0) | int) < 64
+
+    - name: Install Intel oneAPI GPG keyring
+      ansible.builtin.shell: |
+        set -uo pipefail
+        mkdir -p "{{ bootstrap_log_dir }}"
+        logf="{{ bootstrap_log_dir }}/intel-keyring.log"
+        keyring="{{ intel_oneapi_keyring }}"
+        set +e
+        {
+          printf '# %s  curl | gpg --dearmor → %s\n' "$(date -Iseconds)" "${keyring}"
+          # Drop empty leftover so we never skip on a zero-byte file
+          if [[ -e "${keyring}" ]] && [[ ! -s "${keyring}" ]]; then
+            rm -f "${keyring}"
+          fi
+          curl -fsSL "{{ intel_oneapi_key_url }}" \
+            | gpg --dearmor -o "${keyring}"
+          rc=${PIPESTATUS[0]}
+          if [[ ${rc} -ne 0 ]] || [[ ! -s "${keyring}" ]]; then
+            rm -f "${keyring}"
+            printf 'error: keyring missing or empty after fetch (rc=%s)\n' "${rc}"
+            exit 1
+          fi
+          ls -la "${keyring}"
+        } 2>&1 | tee -a "${logf}"
+        rc=${PIPESTATUS[0]}
+        set -e
+        exit "${rc}"
+      args:
+        executable: /bin/bash
+      when: >-
+        not (lmto_intel_keyring_stat.stat.exists | default(false))
+        or (lmto_intel_keyring_stat.stat.size | default(0) | int) < 64
+
+    - name: Verify Intel keyring is non-empty
+      ansible.builtin.stat:
+        path: "{{ intel_oneapi_keyring }}"
+      register: lmto_intel_keyring_ok
+      failed_when: >-
+        not (lmto_intel_keyring_ok.stat.exists | default(false))
+        or (lmto_intel_keyring_ok.stat.size | default(0) | int) < 64
+
+    - name: Add Intel oneAPI apt source (only after keyring OK)
+      ansible.builtin.copy:
+        dest: "{{ intel_oneapi_list }}"
+        mode: "0644"
+        content: "{{ intel_oneapi_repo }}\n"
+
+    - name: Install Intel Fortran compiler (logged)
+      ansible.builtin.include_tasks:
+        file: "{{ playbook_dir }}/tasks/logged_apt_install.yml"
+      vars:
+        logged_apt_name: "apt-{{ lmto_intel_fortran_package }}"
+        logged_apt_packages:
+          - "{{ lmto_intel_fortran_package }}"
+        logged_apt_update: true
+      when: lmto_install_intel_fortran_apt | bool
+
+    - name: Install Intel oneMKL (logged)
+      ansible.builtin.include_tasks:
+        file: "{{ playbook_dir }}/tasks/logged_apt_install.yml"
+      vars:
+        logged_apt_name: "apt-{{ lmto_intel_mkl_package }}"
+        logged_apt_packages:
+          - "{{ lmto_intel_mkl_package }}"
+        logged_apt_update: true
+      when: lmto_install_intel_mkl_apt | bool
+
+  rescue:
+    - name: Remove Intel apt source and keyring after failure (unblock apt)
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ intel_oneapi_list }}"
+        - "{{ intel_oneapi_keyring }}"
+
+    - name: Fail Intel apt phase with cleanup note
+      ansible.builtin.fail:
+        msg: >-
+          Intel oneAPI apt setup failed; removed {{ intel_oneapi_list }} and
+          {{ intel_oneapi_keyring }} so later apt-get update stays healthy.
+          See troubleshooting/intel-apt-repo-poisons-update.md and
+          troubleshooting/wsl-dns-vendor-repos.md. Original error:
+          {{ ansible_failed_result.msg | default(ansible_failed_result.stderr | default('see logs')) }}
 
 - name: Install LMTO profile.d PATH helper
   ansible.builtin.template:

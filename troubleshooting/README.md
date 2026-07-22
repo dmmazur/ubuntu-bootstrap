@@ -3,6 +3,13 @@
 Notes from real bootstrap failures (native Ubuntu and WSL2). Each file describes
 symptoms, cause, fix, and next checks.
 
+Bootstrap scripts (`scripts/bootstrap/lib.sh`) now apply several of these fixes
+automatically: ForceIPv4 for apt, remove a poisoned Intel `oneAPI.list`, repair
+half-configured `openssh-server` on WSL, skip snaps on WSL by default, and skip
+adding the Intel apt repo when DNS looks sinkholed. Re-read the notes below if
+a run still fails or you need to force old behavior (`install_snaps_on_wsl: true`,
+`lmto_intel_skip_if_unreachable: false`).
+
 | Doc | Typical symptom |
 |-----|-----------------|
 | [wsl-dns-vendor-repos.md](wsl-dns-vendor-repos.md) | `apt.repos.intel.com` → `10.0.0.1`, curl timeouts; Windows browser still works |
