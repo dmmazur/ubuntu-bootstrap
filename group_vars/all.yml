@@ -164,10 +164,17 @@ chrome_repo: >-
   deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg]
   https://dl.google.com/linux/chrome/deb/ stable main
 
-# --- .NET SDK (Ubuntu 24.04+ apt feed; package name pins major version) ---
+# --- .NET SDK (package name pins major version) ---
+# Ubuntu 22.04 / 24.04: dotnet-sdk-8.0 is in the built-in apt feed.
+# Ubuntu 26.04+: .NET 8 is only in ppa:dotnet/backports (built-in has .NET 10).
+# Snap `dotnet` / `dotnet-sdk --classic` is a different path; we stay on apt.
 # https://learn.microsoft.com/en-us/dotnet/core/install/linux-ubuntu-install
+# https://devblogs.microsoft.com/dotnet/whats-new-for-dotnet-in-ubuntu-2604/
 dotnet_sdk_version: "8.0"
 dotnet_sdk_package: dotnet-sdk-8.0
+dotnet_backports_ppa: "ppa:dotnet/backports"
+# Add backports when Ubuntu version is >= this (needed for .NET 8 on 26.04+)
+dotnet_backports_min_ubuntu: "26.04"
 
 # --- Ollama (official linux amd64 tarball into /usr) ---
 ollama_tarball_url: https://ollama.com/download/ollama-linux-amd64.tar.zst

@@ -22,7 +22,7 @@ lists and paths from `group_vars/all.yml` (same parsers as verify).
 | `./uninstall/uninstall-debs.sh` | Cursor / VeraCrypt packages |
 | `./uninstall/uninstall-claude.sh` | Claude Desktop + apt repo/keyring |
 | `./uninstall/uninstall-chrome.sh` | Google Chrome + apt repo/keyring |
-| `./uninstall/uninstall-dotnet.sh` | `dotnet-sdk-8.0` (or configured package) |
+| `./uninstall/uninstall-dotnet.sh` | `dotnet-sdk-8.0` (+ `ppa:dotnet/backports` on Ubuntu 26.04+) |
 | `./uninstall/uninstall-ollama.sh` | Ollama binary, unit, optional user |
 | `./uninstall/uninstall-latex.sh` | TeX Live apt packages; optional `~/texmf` / smoke |
 | `./uninstall/uninstall-latex-editors.sh` | LaTeX Workshop via `code` / `cursor` CLI |

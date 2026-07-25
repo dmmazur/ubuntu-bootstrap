@@ -416,11 +416,25 @@ verify_dotnet() {
     skipped "install_dotnet_sdk is false — section disabled"
     return 0
   fi
-  local pkg ver
+  local pkg ver min_ver
   pkg="$(yaml_scalar dotnet_sdk_package)"
   ver="$(yaml_scalar dotnet_sdk_version)"
+  min_ver="$(yaml_scalar dotnet_backports_min_ubuntu)"
   [[ -z "${pkg}" ]] && pkg="dotnet-sdk-8.0"
   [[ -z "${ver}" ]] && ver="8.0"
+  [[ -z "${min_ver}" ]] && min_ver="26.04"
+  if [[ -f /etc/os-release ]]; then
+    # shellcheck source=/dev/null
+    . /etc/os-release
+  fi
+  if [[ "${ID:-}" == "ubuntu" ]] && dpkg --compare-versions "${VERSION_ID:-0}" ge "${min_ver}"; then
+    if grep -rqE 'dotnet/backports|ppa\.launchpadcontent\.net/dotnet/backports' \
+      /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null; then
+      ok "dotnet backports PPA configured (needed for .NET 8 on Ubuntu ${VERSION_ID})"
+    else
+      missing "dotnet backports PPA missing (Ubuntu ${VERSION_ID} needs ppa:dotnet/backports for .NET 8)"
+    fi
+  fi
   check_apt "${pkg}"
   if check_cmd "dotnet CLI" dotnet; then
     if dotnet --list-sdks 2>/dev/null | grep -qE "^${ver}"; then

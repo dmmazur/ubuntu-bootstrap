@@ -56,7 +56,7 @@ Per-section undo scripts live in [`uninstall/`](uninstall/README.md) (purge pack
 | `install_latex_editors` | `true` | `latex-editors` (LaTeX Workshop for Cursor/VS Code) |
 | `install_claude_desktop` | `true` | `claude` |
 | `install_google_chrome` | `true` | `chrome` |
-| `install_dotnet_sdk` | `true` | `dotnet` (.NET 8 SDK via Ubuntu apt) |
+| `install_dotnet_sdk` | `true` | `dotnet` (.NET 8 SDK via apt; backports PPA on 26.04+) |
 | `install_lmto` | `true` | `lmto` |
 | `lmto_nfs_enable` | `false` | NFS mount + `/dep24` convenience links |
 | `install_debs` | `false` | Cursor / VeraCrypt from `files/` |
@@ -180,7 +180,7 @@ Writes `~/Downloads/lmto-setup-report-*.txt`. Copy `~/src` separately via rsync.
 | `debs` | Cursor, VeraCrypt from `files/` (`install_debs`, currently off) |
 | `claude` | Claude Desktop apt repo + package |
 | `chrome` | Google Chrome apt repo + package |
-| `dotnet` | .NET 8 SDK (`dotnet-sdk-8.0` from Ubuntu apt) |
+| `dotnet` | .NET 8 SDK (`dotnet-sdk-8.0`; built-in apt on 22.04/24.04, `ppa:dotnet/backports` on 26.04+) |
 | `ollama` | Ollama tarball + systemd (`install_ollama`, currently off) |
 | `lmto` | Full LMTO stack (all phases below) |
 | `lmto-intel` | Intel oneAPI apt + `~/.bashrc` LSYSTEM/setvars |

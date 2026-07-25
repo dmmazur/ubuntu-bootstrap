@@ -209,8 +209,32 @@
 
     - name: ">>> DOTNET — .NET {{ dotnet_sdk_version }} SDK"
       ansible.builtin.debug:
-        msg: "Installing {{ dotnet_sdk_package }} from Ubuntu apt (24.04+ built-in feed)"
+        msg: >-
+          Installing {{ dotnet_sdk_package }} via apt
+          (Ubuntu {{ ansible_facts['distribution_version'] | default('?') }};
+          backports PPA if >= {{ dotnet_backports_min_ubuntu }})
       when: install_dotnet_sdk | bool
+      tags: [dotnet]
+
+    - name: Add .NET backports PPA (Ubuntu {{ dotnet_backports_min_ubuntu }}+ needs it for .NET 8)
+      ansible.builtin.shell: |
+        set -uo pipefail
+        mkdir -p "{{ bootstrap_log_dir }}"
+        logf="{{ bootstrap_log_dir }}/dotnet-backports-ppa.log"
+        set +e
+        {
+          printf '# %s  add-apt-repository -y %s\n' "$(date -Iseconds)" "{{ dotnet_backports_ppa }}"
+          add-apt-repository -y "{{ dotnet_backports_ppa }}"
+        } 2>&1 | tee -a "${logf}"
+        rc=${PIPESTATUS[0]}
+        set -e
+        exit "${rc}"
+      args:
+        executable: /bin/bash
+      when:
+        - install_dotnet_sdk | bool
+        - ansible_facts['distribution'] | default('') == 'Ubuntu'
+        - (ansible_facts['distribution_version'] | default('0')) is version(dotnet_backports_min_ubuntu, '>=')
       tags: [dotnet]
 
     - name: Install .NET SDK (logged)
