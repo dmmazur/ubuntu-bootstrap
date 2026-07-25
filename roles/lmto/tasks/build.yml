@@ -21,9 +21,12 @@
 - name: Install LMTO apt build prerequisites (logged)
   ansible.builtin.include_tasks:
     file: "{{ playbook_dir }}/tasks/logged_apt_install.yml"
+    apply:
+      tags: [lmto, lmto-build]
   vars:
     logged_apt_name: apt-lmto-build
     logged_apt_packages: "{{ apt_packages_lmto }}"
+  tags: [lmto, lmto-build]
 
 - name: Create scratch directory for builds
   ansible.builtin.file:

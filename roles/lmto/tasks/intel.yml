@@ -136,22 +136,28 @@
     - name: Install Intel Fortran compiler (logged)
       ansible.builtin.include_tasks:
         file: "{{ playbook_dir }}/tasks/logged_apt_install.yml"
+        apply:
+          tags: [lmto, lmto-intel]
       vars:
         logged_apt_name: "apt-{{ lmto_intel_fortran_package }}"
         logged_apt_packages:
           - "{{ lmto_intel_fortran_package }}"
         logged_apt_update: true
       when: lmto_install_intel_fortran_apt | bool
+      tags: [lmto, lmto-intel]
 
     - name: Install Intel oneMKL (logged)
       ansible.builtin.include_tasks:
         file: "{{ playbook_dir }}/tasks/logged_apt_install.yml"
+        apply:
+          tags: [lmto, lmto-intel]
       vars:
         logged_apt_name: "apt-{{ lmto_intel_mkl_package }}"
         logged_apt_packages:
           - "{{ lmto_intel_mkl_package }}"
         logged_apt_update: true
       when: lmto_install_intel_mkl_apt | bool
+      tags: [lmto, lmto-intel]
 
   rescue:
     - name: Remove Intel apt source and keyring after failure (unblock apt)

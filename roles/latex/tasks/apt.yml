@@ -10,12 +10,18 @@
 - name: Update apt cache for LaTeX (logged)
   ansible.builtin.include_tasks:
     file: "{{ playbook_dir }}/tasks/logged_apt_update.yml"
+    apply:
+      tags: [latex, latex-apt]
   vars:
     logged_apt_name: apt-latex-update
+  tags: [latex, latex-apt]
 
 - name: Install LaTeX apt packages (logged)
   ansible.builtin.include_tasks:
     file: "{{ playbook_dir }}/tasks/logged_apt_install.yml"
+    apply:
+      tags: [latex, latex-apt]
   vars:
     logged_apt_name: apt-latex
     logged_apt_packages: "{{ apt_packages_latex }}"
+  tags: [latex, latex-apt]

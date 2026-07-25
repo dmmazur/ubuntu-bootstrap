@@ -85,12 +85,20 @@
         msg: "{{ apt_packages_common }}"
       tags: [common]
 
+    # include_tasks needs apply: tags — otherwise --tags (bootstrap-scientific.sh)
+    # includes the file but skips the untagged apt shell task inside.
     - name: Update apt cache (logged)
-      ansible.builtin.include_tasks: tasks/logged_apt_update.yml
+      ansible.builtin.include_tasks:
+        file: tasks/logged_apt_update.yml
+        apply:
+          tags: [common, lab, lmto, claude, chrome, dotnet, experimental]
       tags: [common, lab, lmto, claude, chrome, dotnet, experimental]
 
     - name: Install common apt packages (logged)
-      ansible.builtin.include_tasks: tasks/logged_apt_install.yml
+      ansible.builtin.include_tasks:
+        file: tasks/logged_apt_install.yml
+        apply:
+          tags: [common]
       vars:
         logged_apt_name: apt-common
         logged_apt_packages: "{{ apt_packages_common }}"
@@ -106,7 +114,10 @@
       tags: [lab]
 
     - name: Install lab apt packages (logged)
-      ansible.builtin.include_tasks: tasks/logged_apt_install.yml
+      ansible.builtin.include_tasks:
+        file: tasks/logged_apt_install.yml
+        apply:
+          tags: [lab]
       vars:
         logged_apt_name: apt-lab
         logged_apt_packages: "{{ apt_packages_lab_effective | default(apt_packages_lab) }}"
@@ -171,7 +182,10 @@
       tags: [dotnet]
 
     - name: Install .NET SDK (logged)
-      ansible.builtin.include_tasks: tasks/logged_apt_install.yml
+      ansible.builtin.include_tasks:
+        file: tasks/logged_apt_install.yml
+        apply:
+          tags: [dotnet]
       vars:
         logged_apt_name: "apt-{{ dotnet_sdk_package }}"
         logged_apt_packages: "{{ [dotnet_sdk_package] }}"
@@ -249,7 +263,10 @@
       tags: [claude]
 
     - name: Install Claude Desktop (logged)
-      ansible.builtin.include_tasks: tasks/logged_apt_install.yml
+      ansible.builtin.include_tasks:
+        file: tasks/logged_apt_install.yml
+        apply:
+          tags: [claude]
       vars:
         logged_apt_name: apt-claude-desktop
         logged_apt_packages: [claude-desktop]
@@ -292,7 +309,10 @@
       tags: [chrome]
 
     - name: Install Google Chrome (logged)
-      ansible.builtin.include_tasks: tasks/logged_apt_install.yml
+      ansible.builtin.include_tasks:
+        file: tasks/logged_apt_install.yml
+        apply:
+          tags: [chrome]
       vars:
         logged_apt_name: apt-google-chrome
         logged_apt_packages: [google-chrome-stable]
@@ -450,7 +470,10 @@
       tags: [experimental]
 
     - name: Install experimental apt packages (logged)
-      ansible.builtin.include_tasks: tasks/logged_apt_install.yml
+      ansible.builtin.include_tasks:
+        file: tasks/logged_apt_install.yml
+        apply:
+          tags: [experimental]
       vars:
         logged_apt_name: apt-experimental
         logged_apt_packages: "{{ apt_packages_experimental }}"
