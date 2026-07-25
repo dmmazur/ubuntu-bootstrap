@@ -1,6 +1,7 @@
 ---
 # Local Ubuntu workstation bootstrap.
-# Tags: common, snaps, flatpak, debs, claude, chrome, dotnet, ollama, lab, latex, latex-editors, lmto
+# Order: common → lab → lmto → latex → dotnet → snaps → claude → chrome →
+#         debs → latex-editors → flatpak → ollama → experimental
 # Tip: add -v or -vv for more Ansible detail.
 # Command logs: {{ bootstrap_log_dir }} (see scripts/bootstrap/lib.sh / /tmp/ubuntu-bootstrap-latest)
 
@@ -78,6 +79,7 @@
       when: bootstrap_force_ipv4 | default(true) | bool
       tags: [always]
 
+    # --- common ---
     - name: ">>> COMMON — {{ apt_packages_common | length }} apt package(s)"
       ansible.builtin.debug:
         msg: "{{ apt_packages_common }}"
@@ -85,7 +87,7 @@
 
     - name: Update apt cache (logged)
       ansible.builtin.include_tasks: tasks/logged_apt_update.yml
-      tags: [common, lab, claude, chrome, dotnet, lmto]
+      tags: [common, lab, lmto, claude, chrome, dotnet, experimental]
 
     - name: Install common apt packages (logged)
       ansible.builtin.include_tasks: tasks/logged_apt_install.yml
@@ -94,6 +96,7 @@
         logged_apt_packages: "{{ apt_packages_common }}"
       tags: [common]
 
+    # --- lab ---
     - name: ">>> LAB — {{ apt_packages_lab_effective | default(apt_packages_lab) | length }} apt package(s)"
       ansible.builtin.debug:
         msg:
@@ -110,30 +113,119 @@
       when: enable_lab_packages | bool
       tags: [lab]
 
-    - name: ">>> FLATPAK — {{ flatpaks | length }} app(s)"
+    # --- lmto ---
+    - name: ">>> LMTO — phased install (intel / unpack / build / xscr)"
       ansible.builtin.debug:
-        msg: "{{ flatpaks }}"
-      when: install_flatpak | bool
-      tags: [flatpak]
+        msg: "LMTO role: LSYSTEM={{ lmto_lsystem }}, src={{ lmto_src_dir }}"
+      when: install_lmto | bool
+      tags: [lmto, lmto-intel, lmto-unpack, lmto-build, lmto-xscr, lmto-ownership, lmto-rdir, lmto-test]
 
-    - name: Ensure Flathub remote exists
-      community.general.flatpak_remote:
-        name: "{{ flatpak_remote_name }}"
-        flatpakrepo_url: "{{ flatpak_remote_url }}"
-        state: present
-      when: install_flatpak | bool
-      tags: [flatpak]
+    - name: Install LMTO and prerequisites
+      ansible.builtin.include_role:
+        name: lmto
+      when: install_lmto | bool
+      tags: [lmto, lmto-intel, lmto-unpack, lmto-build, lmto-xscr, lmto-ownership, lmto-rdir, lmto-test]
 
-    - name: Install Flatpak app
-      community.general.flatpak:
-        name: "{{ item }}"
+    # --- latex ---
+    - name: ">>> LATEX — TeX Live apt (self-contained)"
+      ansible.builtin.debug:
+        msg: "LaTeX role: {{ apt_packages_latex | length }} apt package(s), texmf={{ latex_texmf_dir }}"
+      when: install_latex | bool
+      tags: [latex, latex-apt, latex-texmf, latex-smoke]
+
+    - name: Install and configure LaTeX
+      ansible.builtin.include_role:
+        name: latex
+      when: install_latex | bool
+      tags: [latex, latex-apt, latex-texmf, latex-smoke]
+
+    # --- dotnet ---
+    - name: ">>> DOTNET — .NET {{ dotnet_sdk_version }} SDK"
+      ansible.builtin.debug:
+        msg: >-
+          Installing {{ dotnet_sdk_package }} via apt
+          (Ubuntu {{ ansible_facts['distribution_version'] | default('?') }};
+          backports PPA if >= {{ dotnet_backports_min_ubuntu }})
+      when: install_dotnet_sdk | bool
+      tags: [dotnet]
+
+    - name: Add .NET backports PPA (Ubuntu {{ dotnet_backports_min_ubuntu }}+ needs it for .NET 8)
+      ansible.builtin.shell: |
+        set -uo pipefail
+        mkdir -p "{{ bootstrap_log_dir }}"
+        logf="{{ bootstrap_log_dir }}/dotnet-backports-ppa.log"
+        set +e
+        {
+          printf '# %s  add-apt-repository -y %s\n' "$(date -Iseconds)" "{{ dotnet_backports_ppa }}"
+          add-apt-repository -y "{{ dotnet_backports_ppa }}"
+        } 2>&1 | tee -a "${logf}"
+        rc=${PIPESTATUS[0]}
+        set -e
+        exit "${rc}"
+      args:
+        executable: /bin/bash
+      when:
+        - install_dotnet_sdk | bool
+        - ansible_facts['distribution'] | default('') == 'Ubuntu'
+        - (ansible_facts['distribution_version'] | default('0')) is version(dotnet_backports_min_ubuntu, '>=')
+      tags: [dotnet]
+
+    - name: Install .NET SDK (logged)
+      ansible.builtin.include_tasks: tasks/logged_apt_install.yml
+      vars:
+        logged_apt_name: "apt-{{ dotnet_sdk_package }}"
+        logged_apt_packages: "{{ [dotnet_sdk_package] }}"
+        logged_apt_update: true
+      when: install_dotnet_sdk | bool
+      tags: [dotnet]
+
+    # --- snaps (before latex-editors so `code` may exist for extensions) ---
+    - name: ">>> SNAPS — skipped on WSL (set install_snaps_on_wsl: true to force)"
+      ansible.builtin.debug:
+        msg: >-
+          Skipping snaps on WSL (install_snaps={{ install_snaps }},
+          install_snaps_on_wsl={{ install_snaps_on_wsl }}).
+          Prefer Windows VS Code / native apps; see troubleshooting/wsl-snap-install-fails.md
+      when:
+        - install_snaps | default(true) | bool
+        - bootstrap_is_wsl | default(false) | bool
+        - not (install_snaps_on_wsl | default(false) | bool)
+      tags: [snaps]
+
+    - name: ">>> SNAPS — {{ snaps | length }} package(s)"
+      ansible.builtin.debug:
+        msg: "{{ snaps | map(attribute='name') | list }}"
+      when: bootstrap_do_snaps | default(false) | bool
+      tags: [snaps]
+
+    - name: Install snap package
+      community.general.snap:
+        name: "{{ item.name }}"
+        classic: "{{ item.classic | default(false) }}"
         state: present
-      loop: "{{ flatpaks }}"
+      loop: "{{ snaps }}"
       loop_control:
-        label: "{{ item }}"
-      when: install_flatpak | bool
-      tags: [flatpak]
+        label: "{{ item.name }}"
+      when: bootstrap_do_snaps | default(false) | bool
+      ignore_errors: true
+      register: bootstrap_snap_results
+      tags: [snaps]
 
+    - name: Warn about failed snap installs (non-fatal)
+      ansible.builtin.debug:
+        msg: >-
+          Snap {{ item.item.name }} failed (ignored so other sections can continue):
+          {{ item.msg | default(item.stderr | default('unknown error')) }}
+      loop: "{{ bootstrap_snap_results.results | default([]) }}"
+      loop_control:
+        label: "{{ item.item.name | default('snap') }}"
+      when:
+        - bootstrap_do_snaps | default(false) | bool
+        - bootstrap_snap_results is defined
+        - item.failed | default(false) | bool
+      tags: [snaps]
+
+    # --- claude ---
     - name: ">>> CLAUDE DESKTOP"
       ansible.builtin.debug:
         msg: "Installing Claude Desktop from vendor apt repo"
@@ -165,6 +257,7 @@
       when: install_claude_desktop | bool
       tags: [claude]
 
+    # --- chrome ---
     - name: ">>> GOOGLE CHROME"
       ansible.builtin.debug:
         msg: "Installing Google Chrome from Google apt repo"
@@ -207,45 +300,91 @@
       when: install_google_chrome | bool
       tags: [chrome]
 
-    - name: ">>> DOTNET — .NET {{ dotnet_sdk_version }} SDK"
+    # --- debs (before latex-editors so Cursor CLI may exist for extensions) ---
+    - name: Install local .deb packages from files/
+      when: install_debs | bool
+      tags: [debs]
+      block:
+        - name: ">>> DEBS — patterns {{ debs | map(attribute='pattern') | list }}"
+          ansible.builtin.debug:
+            msg: "Searching {{ playbook_dir }}/files for matching .deb files"
+
+        - name: Locate .deb packages in files/
+          ansible.builtin.find:
+            paths: "{{ playbook_dir }}/files"
+            patterns: "{{ item.pattern }}"
+            file_type: file
+          loop: "{{ debs }}"
+          register: deb_finds
+          loop_control:
+            label: "{{ item.name }} ({{ item.pattern }})"
+
+        - name: Install matching .deb (logged)
+          ansible.builtin.shell: |
+            set -uo pipefail
+            mkdir -p "{{ bootstrap_log_dir }}"
+            deb="{{ (item.files | sort(attribute='mtime') | last).path }}"
+            logf="{{ bootstrap_log_dir }}/apt-deb-{{ item.item.name }}.log"
+            set +e
+            {
+              printf '# %s  apt-get install -y %s\n' "$(date -Iseconds)" "${deb}"
+              DEBIAN_FRONTEND=noninteractive apt-get install -y "${deb}"
+            } 2>&1 | tee -a "${logf}"
+            rc=${PIPESTATUS[0]}
+            set -e
+            exit "${rc}"
+          args:
+            executable: /bin/bash
+          loop: "{{ deb_finds.results | selectattr('files', 'defined') | rejectattr('files', 'equalto', []) | list }}"
+          loop_control:
+            label: "{{ item.item.name }} -> {{ (item.files | sort(attribute='mtime') | last).path | basename }}"
+
+        - name: Warn when no matching .deb found
+          ansible.builtin.debug:
+            msg: "Skipping {{ item.item.name }} — no file matching files/{{ item.item.pattern }}"
+          loop: "{{ deb_finds.results | selectattr('files', 'defined') | selectattr('files', 'equalto', []) | list }}"
+          loop_control:
+            label: "{{ item.item.name }}"
+
+    # --- latex-editors ---
+    - name: ">>> LATEX EDITORS — LaTeX Workshop (Cursor / VS Code)"
       ansible.builtin.debug:
-        msg: >-
-          Installing {{ dotnet_sdk_package }} via apt
-          (Ubuntu {{ ansible_facts['distribution_version'] | default('?') }};
-          backports PPA if >= {{ dotnet_backports_min_ubuntu }})
-      when: install_dotnet_sdk | bool
-      tags: [dotnet]
+        msg: "Extension {{ latex_workshop_extension_id }} for {{ latex_editors | map(attribute='name') | list }}"
+      when: install_latex_editors | bool
+      tags: [latex-editors]
 
-    - name: Add .NET backports PPA (Ubuntu {{ dotnet_backports_min_ubuntu }}+ needs it for .NET 8)
-      ansible.builtin.shell: |
-        set -uo pipefail
-        mkdir -p "{{ bootstrap_log_dir }}"
-        logf="{{ bootstrap_log_dir }}/dotnet-backports-ppa.log"
-        set +e
-        {
-          printf '# %s  add-apt-repository -y %s\n' "$(date -Iseconds)" "{{ dotnet_backports_ppa }}"
-          add-apt-repository -y "{{ dotnet_backports_ppa }}"
-        } 2>&1 | tee -a "${logf}"
-        rc=${PIPESTATUS[0]}
-        set -e
-        exit "${rc}"
-      args:
-        executable: /bin/bash
-      when:
-        - install_dotnet_sdk | bool
-        - ansible_facts['distribution'] | default('') == 'Ubuntu'
-        - (ansible_facts['distribution_version'] | default('0')) is version(dotnet_backports_min_ubuntu, '>=')
-      tags: [dotnet]
+    - name: Install LaTeX Workshop editor extensions
+      ansible.builtin.include_role:
+        name: latex_editors
+      when: install_latex_editors | bool
+      tags: [latex-editors]
 
-    - name: Install .NET SDK (logged)
-      ansible.builtin.include_tasks: tasks/logged_apt_install.yml
-      vars:
-        logged_apt_name: "apt-{{ dotnet_sdk_package }}"
-        logged_apt_packages: "{{ [dotnet_sdk_package] }}"
-        logged_apt_update: true
-      when: install_dotnet_sdk | bool
-      tags: [dotnet]
+    # --- flatpak ---
+    - name: ">>> FLATPAK — {{ flatpaks | length }} app(s)"
+      ansible.builtin.debug:
+        msg: "{{ flatpaks }}"
+      when: install_flatpak | bool
+      tags: [flatpak]
 
+    - name: Ensure Flathub remote exists
+      community.general.flatpak_remote:
+        name: "{{ flatpak_remote_name }}"
+        flatpakrepo_url: "{{ flatpak_remote_url }}"
+        state: present
+      when: install_flatpak | bool
+      tags: [flatpak]
+
+    - name: Install Flatpak app
+      community.general.flatpak:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ flatpaks }}"
+      loop_control:
+        label: "{{ item }}"
+      when: install_flatpak | bool
+      tags: [flatpak]
+
+    # --- ollama ---
     - name: ">>> OLLAMA"
       ansible.builtin.debug:
         msg: "Installing Ollama from upstream tarball"
@@ -303,134 +442,20 @@
       when: install_ollama | bool
       tags: [ollama]
 
-    - name: ">>> LATEX — TeX Live apt (self-contained)"
+    # --- experimental ---
+    - name: ">>> EXPERIMENTAL — {{ apt_packages_experimental | length }} apt package(s)"
       ansible.builtin.debug:
-        msg: "LaTeX role: {{ apt_packages_latex | length }} apt package(s), texmf={{ latex_texmf_dir }}"
-      when: install_latex | bool
-      tags: [latex, latex-apt, latex-texmf, latex-smoke]
+        msg: "{{ apt_packages_experimental }}"
+      when: install_experimental | bool
+      tags: [experimental]
 
-    - name: Install and configure LaTeX
-      ansible.builtin.include_role:
-        name: latex
-      when: install_latex | bool
-      tags: [latex, latex-apt, latex-texmf, latex-smoke]
-
-    # Snaps late so apt/vendor sections are not blocked by snapd; before IDE
-    # extensions so VS Code (`code` snap) exists when LaTeX Workshop installs.
-    - name: ">>> SNAPS — skipped on WSL (set install_snaps_on_wsl: true to force)"
-      ansible.builtin.debug:
-        msg: >-
-          Skipping snaps on WSL (install_snaps={{ install_snaps }},
-          install_snaps_on_wsl={{ install_snaps_on_wsl }}).
-          Prefer Windows VS Code / native apps; see troubleshooting/wsl-snap-install-fails.md
-      when:
-        - install_snaps | default(true) | bool
-        - bootstrap_is_wsl | default(false) | bool
-        - not (install_snaps_on_wsl | default(false) | bool)
-      tags: [snaps]
-
-    - name: ">>> SNAPS — {{ snaps | length }} package(s)"
-      ansible.builtin.debug:
-        msg: "{{ snaps | map(attribute='name') | list }}"
-      when: bootstrap_do_snaps | default(false) | bool
-      tags: [snaps]
-
-    - name: Install snap package
-      community.general.snap:
-        name: "{{ item.name }}"
-        classic: "{{ item.classic | default(false) }}"
-        state: present
-      loop: "{{ snaps }}"
-      loop_control:
-        label: "{{ item.name }}"
-      when: bootstrap_do_snaps | default(false) | bool
-      ignore_errors: true
-      register: bootstrap_snap_results
-      tags: [snaps]
-
-    - name: Warn about failed snap installs (non-fatal)
-      ansible.builtin.debug:
-        msg: >-
-          Snap {{ item.item.name }} failed (ignored so other sections can continue):
-          {{ item.msg | default(item.stderr | default('unknown error')) }}
-      loop: "{{ bootstrap_snap_results.results | default([]) }}"
-      loop_control:
-        label: "{{ item.item.name | default('snap') }}"
-      when:
-        - bootstrap_do_snaps | default(false) | bool
-        - bootstrap_snap_results is defined
-        - item.failed | default(false) | bool
-      tags: [snaps]
-
-    - name: ">>> LATEX EDITORS — LaTeX Workshop (Cursor / VS Code)"
-      ansible.builtin.debug:
-        msg: "Extension {{ latex_workshop_extension_id }} for {{ latex_editors | map(attribute='name') | list }}"
-      when: install_latex_editors | bool
-      tags: [latex-editors]
-
-    - name: Install LaTeX Workshop editor extensions
-      ansible.builtin.include_role:
-        name: latex_editors
-      when: install_latex_editors | bool
-      tags: [latex-editors]
-
-    - name: ">>> LMTO — phased install (intel / unpack / build / xscr)"
-      ansible.builtin.debug:
-        msg: "LMTO role: LSYSTEM={{ lmto_lsystem }}, src={{ lmto_src_dir }}"
-      when: install_lmto | bool
-      tags: [lmto, lmto-intel, lmto-unpack, lmto-build, lmto-xscr, lmto-ownership, lmto-rdir, lmto-test]
-
-    - name: Install LMTO and prerequisites
-      ansible.builtin.include_role:
-        name: lmto
-      when: install_lmto | bool
-      tags: [lmto, lmto-intel, lmto-unpack, lmto-build, lmto-xscr, lmto-ownership, lmto-rdir, lmto-test]
-
-    # Local .debs last (disabled by default). Only enter this section when enabled.
-    - name: Install local .deb packages from files/
-      when: install_debs | bool
-      tags: [debs]
-      block:
-        - name: ">>> DEBS — patterns {{ debs | map(attribute='pattern') | list }}"
-          ansible.builtin.debug:
-            msg: "Searching {{ playbook_dir }}/files for matching .deb files"
-
-        - name: Locate .deb packages in files/
-          ansible.builtin.find:
-            paths: "{{ playbook_dir }}/files"
-            patterns: "{{ item.pattern }}"
-            file_type: file
-          loop: "{{ debs }}"
-          register: deb_finds
-          loop_control:
-            label: "{{ item.name }} ({{ item.pattern }})"
-
-        - name: Install matching .deb (logged)
-          ansible.builtin.shell: |
-            set -uo pipefail
-            mkdir -p "{{ bootstrap_log_dir }}"
-            deb="{{ (item.files | sort(attribute='mtime') | last).path }}"
-            logf="{{ bootstrap_log_dir }}/apt-deb-{{ item.item.name }}.log"
-            set +e
-            {
-              printf '# %s  apt-get install -y %s\n' "$(date -Iseconds)" "${deb}"
-              DEBIAN_FRONTEND=noninteractive apt-get install -y "${deb}"
-            } 2>&1 | tee -a "${logf}"
-            rc=${PIPESTATUS[0]}
-            set -e
-            exit "${rc}"
-          args:
-            executable: /bin/bash
-          loop: "{{ deb_finds.results | selectattr('files', 'defined') | rejectattr('files', 'equalto', []) | list }}"
-          loop_control:
-            label: "{{ item.item.name }} -> {{ (item.files | sort(attribute='mtime') | last).path | basename }}"
-
-        - name: Warn when no matching .deb found
-          ansible.builtin.debug:
-            msg: "Skipping {{ item.item.name }} — no file matching files/{{ item.item.pattern }}"
-          loop: "{{ deb_finds.results | selectattr('files', 'defined') | selectattr('files', 'equalto', []) | list }}"
-          loop_control:
-            label: "{{ item.item.name }}"
+    - name: Install experimental apt packages (logged)
+      ansible.builtin.include_tasks: tasks/logged_apt_install.yml
+      vars:
+        logged_apt_name: apt-experimental
+        logged_apt_packages: "{{ apt_packages_experimental }}"
+      when: install_experimental | bool
+      tags: [experimental]
 
   handlers:
     - name: Restart ollama

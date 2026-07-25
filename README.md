@@ -12,6 +12,10 @@ cd ubuntu-bootstrap
 # Full install (Ansible + all enabled sections)
 ./bootstrap.sh
 
+# Or split stacks:
+./bootstrap-scientific.sh    # common, lab, lmto, latex, dotnet
+./bootstrap-development.sh   # snaps, claude, chrome, debs, latex-editors, flatpak, ollama, experimental
+
 # Or one section at a time:
 ./scripts/bootstrap/bootstrap-common.sh
 ./scripts/bootstrap/bootstrap-lab.sh
@@ -62,6 +66,7 @@ Per-section undo scripts live in [`uninstall/`](uninstall/README.md) (purge pack
 | `install_debs` | `false` | Cursor / VeraCrypt from `files/` |
 | `install_flatpak` | `false` | Flatpak apps |
 | `install_ollama` | `false` | Ollama |
+| `install_experimental` | `false` | `experimental` (kitty, tilix) |
 
 ### Manual ansible-playbook (alternative)
 
@@ -83,6 +88,8 @@ Section banners (`>>> COMMON`, …) and per-package task names show progress.
 | Script | Section |
 |--------|---------|
 | `./bootstrap.sh` | Everything (enabled in `group_vars/all.yml`) |
+| `./bootstrap-scientific.sh` | `common`, `lab`, `lmto`, `latex`, `dotnet` |
+| `./bootstrap-development.sh` | `snaps`, `claude`, `chrome`, `debs`, `latex-editors`, `flatpak`, `ollama`, `experimental` (forces on debs/flatpak/ollama/experimental) |
 | `./scripts/bootstrap/bootstrap-common.sh` | Common apt packages |
 | `./scripts/bootstrap/bootstrap-lab.sh` | Lab apt packages |
 | `./scripts/bootstrap/bootstrap-latex.sh` | LaTeX (all phases; self-contained) |
@@ -105,6 +112,7 @@ Section banners (`>>> COMMON`, …) and per-package task names show progress.
 | `./scripts/bootstrap/bootstrap-lmto.sh ownership` | chown `~/src` `~/bin` `~/lib` → login user |
 | `./scripts/bootstrap/bootstrap-flatpak.sh` | Flatpak (`install_flatpak`, currently off) |
 | `./scripts/bootstrap/bootstrap-ollama.sh` | Ollama (`install_ollama`, currently off) |
+| `./scripts/bootstrap/bootstrap-experimental.sh` | Experimental apt (`install_experimental`, currently off) |
 
 ### Verify what is installed
 
@@ -124,6 +132,7 @@ Read expectations from `group_vars/all.yml` and report **OK / MISSING / SKIP** (
 ./scripts/verify/verify-debs.sh           # SKIP when install_debs is false
 ./scripts/verify/verify-flatpak.sh
 ./scripts/verify/verify-ollama.sh
+./scripts/verify/verify-experimental.sh   # SKIP when install_experimental is false
 ```
 
 | Script | Checks |
@@ -140,6 +149,7 @@ Read expectations from `group_vars/all.yml` and report **OK / MISSING / SKIP** (
 | `./scripts/verify/verify-dotnet.sh` | .NET SDK apt package + `dotnet` CLI |
 | `./scripts/verify/verify-lmto.sh` | LMTO apt/Intel/`~/src`/binaries/links/NFS |
 | `./scripts/verify/verify-flatpak.sh` | Flatpak apps |
+| `./scripts/verify/verify-experimental.sh` | Experimental apt (kitty, tilix) |
 | `./scripts/verify/verify-ollama.sh` | Ollama binary + systemd |
 
 ### Gather LaTeX setup (from a machine that already has it)
@@ -166,22 +176,16 @@ Writes `~/Downloads/lmto-setup-report-*.txt`. Copy `~/src` separately via rsync.
 
 ## Tags
 
+Install order (full `./bootstrap.sh`):
+
+1. `common` → 2. `lab` → 3. `lmto` → 4. `latex` → 5. `dotnet` → 6. `snaps` →
+7. `claude` → 8. `chrome` → 9. `debs` → 10. `latex-editors` → 11. `flatpak` →
+12. `ollama` → 13. `experimental`
+
 | Tag | What it installs |
 |-----|------------------|
 | `common` | Shared apt packages (includes `gh`) |
-| `lab` | NFS, gv, emacs, terminals, etc. (`enable_lab_packages`) |
-| `latex` | Full LaTeX stack (self-contained; phases below) |
-| `latex-apt` | Curated TeX Live apt packages (+ own apt update) |
-| `latex-texmf` | `~/texmf` layout + optional `files/latex-userdata.tgz` |
-| `latex-smoke` | `pdflatex` smoke test → `~/TeX/smoke/smoke.pdf` |
-| `latex-editors` | LaTeX Workshop extension for Cursor + VS Code |
-| `snaps` | VS Code, Telegram, Claude Code |
-| `flatpak` | Flathub + Newelle, Flatseal (`install_flatpak`, currently off) |
-| `debs` | Cursor, VeraCrypt from `files/` (`install_debs`, currently off) |
-| `claude` | Claude Desktop apt repo + package |
-| `chrome` | Google Chrome apt repo + package |
-| `dotnet` | .NET 8 SDK (`dotnet-sdk-8.0`; built-in apt on 22.04/24.04, `ppa:dotnet/backports` on 26.04+) |
-| `ollama` | Ollama tarball + systemd (`install_ollama`, currently off) |
+| `lab` | NFS, gv, emacs, etc. (`enable_lab_packages`) |
 | `lmto` | Full LMTO stack (all phases below) |
 | `lmto-intel` | Intel oneAPI apt + `~/.bashrc` LSYSTEM/setvars |
 | `lmto-unpack` | Create `~/src`, unpack base + patch archives |
@@ -190,6 +194,19 @@ Writes `~/Downloads/lmto-setup-report-*.txt`. Copy `~/src` separately via rsync.
 | `lmto-xscr` | Copy `SCRIPT/{Xscr,grf2eps,grfonts}` → `~/bin` + `~/bin/ifx` |
 | `lmto-test` | Wipe `~/R/Fe`, run bare `lmt` structure setup |
 | `lmto-ownership` | chown LMTO home paths to login user |
+| `latex` | Full LaTeX stack (self-contained; phases below) |
+| `latex-apt` | Curated TeX Live apt packages (+ own apt update) |
+| `latex-texmf` | `~/texmf` layout + optional `files/latex-userdata.tgz` |
+| `latex-smoke` | `pdflatex` smoke test → `~/TeX/smoke/smoke.pdf` |
+| `dotnet` | .NET 8 SDK (`dotnet-sdk-8.0`; built-in apt on 22.04/24.04, `ppa:dotnet/backports` on 26.04+) |
+| `snaps` | VS Code, Telegram, Claude Code |
+| `claude` | Claude Desktop apt repo + package |
+| `chrome` | Google Chrome apt repo + package |
+| `debs` | Cursor, VeraCrypt from `files/` (`install_debs`, currently off) |
+| `latex-editors` | LaTeX Workshop extension for Cursor / VS Code |
+| `flatpak` | Flathub + Newelle, Flatseal (`install_flatpak`, currently off) |
+| `ollama` | Ollama tarball + systemd (`install_ollama`, currently off) |
+| `experimental` | Optional apt extras: kitty, tilix (`install_experimental`, currently off) |
 
 Examples:
 
@@ -204,6 +221,8 @@ BOOTSTRAP_VERBOSE=1 ./scripts/bootstrap/bootstrap-snaps.sh
 | Path | Purpose |
 |------|---------|
 | `bootstrap.sh` | Full first-time install entrypoint |
+| `bootstrap-scientific.sh` | Scientific stack entrypoint |
+| `bootstrap-development.sh` | Development / desktop stack entrypoint |
 | `verify-installed.sh` | Full install-status check (no Ansible) |
 | `ansible.cfg` | Defaults (local inventory, become) |
 | `inventory.ini` | `localhost` with local connection |

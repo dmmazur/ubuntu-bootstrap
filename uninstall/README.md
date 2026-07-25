@@ -17,6 +17,7 @@ lists and paths from `group_vars/all.yml` (same parsers as verify).
 |--------|---------|
 | `./uninstall/uninstall-common.sh` | `apt_packages_common` |
 | `./uninstall/uninstall-lab.sh` | `apt_packages_lab` |
+| `./uninstall/uninstall-experimental.sh` | `apt_packages_experimental` (kitty, tilix, …) |
 | `./uninstall/uninstall-snaps.sh` | snaps (`code`, `telegram-desktop`, …) |
 | `./uninstall/uninstall-flatpak.sh` | Flatpak apps (keeps Flathub remote) |
 | `./uninstall/uninstall-debs.sh` | Cursor / VeraCrypt packages |

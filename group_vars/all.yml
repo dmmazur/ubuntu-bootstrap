@@ -14,7 +14,9 @@ install_snaps: true
 install_snaps_on_wsl: false
 # Cursor/VeraCrypt .debs from files/ (off while testing other sections)
 install_debs: false
-# Lab/scientific extras (NFS, PostScript viewer, terminals, etc.)
+# Optional/experimental apt extras (terminals, …) — last section, off by default
+install_experimental: false
+# Lab/scientific extras (NFS, PostScript viewer, etc.)
 enable_lab_packages: true
 # On WSL, openssh-server postinst often breaks dpkg (no real systemd for ssh).
 # Drop it from the lab set when bootstrap_is_wsl is true (set by bootstrap scripts).
@@ -65,13 +67,16 @@ apt_packages_common:
 apt_packages_lab:
   - emacs
   - gv
-  - kitty
   - nfs-common
   - ntfs-3g
   - openssh-server
   - texinfo
-  - tilix
   - traceroute
+
+# --- apt: experimental (off by default; last playbook section) ---
+apt_packages_experimental:
+  - kitty
+  - tilix
 
 # --- apt: LaTeX (dep24 manual packages + latexmk/biber; self-contained) ---
 # Matches ~/Downloads/dep24/latex-setup-report-*.txt apt-mark list.

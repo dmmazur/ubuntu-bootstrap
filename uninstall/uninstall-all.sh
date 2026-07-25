@@ -2,8 +2,9 @@
 # Run all section uninstall scripts (reverse of a typical full bootstrap).
 # Asks once before starting unless UNINSTALL_YES=1.
 #
-# Order: lmto → latex-editors → latex → ollama → dotnet → chrome → claude →
-#         debs → snaps → flatpak → lab → common
+# Reverse of playbook install order:
+# experimental → ollama → flatpak → latex-editors → debs → chrome → claude →
+# snaps → dotnet → latex → lmto → lab → common
 set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh
@@ -17,16 +18,17 @@ fi
 export UNINSTALL_YES="${UNINSTALL_YES:-0}"
 
 sections=(
-  uninstall-lmto.sh
-  uninstall-latex-editors.sh
-  uninstall-latex.sh
+  uninstall-experimental.sh
   uninstall-ollama.sh
-  uninstall-dotnet.sh
+  uninstall-flatpak.sh
+  uninstall-latex-editors.sh
+  uninstall-debs.sh
   uninstall-chrome.sh
   uninstall-claude.sh
-  uninstall-debs.sh
   uninstall-snaps.sh
-  uninstall-flatpak.sh
+  uninstall-dotnet.sh
+  uninstall-latex.sh
+  uninstall-lmto.sh
   uninstall-lab.sh
   uninstall-common.sh
 )

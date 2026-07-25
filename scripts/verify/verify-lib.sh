@@ -234,6 +234,19 @@ verify_lab() {
   done < <(yaml_list apt_packages_lab)
 }
 
+verify_experimental() {
+  section "experimental (apt packages)"
+  if [[ "$(yaml_bool install_experimental)" != "true" ]]; then
+    skipped "install_experimental is false — section disabled"
+    return 0
+  fi
+  local pkg
+  while IFS= read -r pkg; do
+    [[ -z "${pkg}" ]] && continue
+    check_apt "${pkg}"
+  done < <(yaml_list apt_packages_experimental)
+}
+
 verify_latex() {
   section "latex"
   if [[ "$(yaml_bool install_latex)" != "true" ]]; then
@@ -651,17 +664,19 @@ verify_all() {
   printf 'ubuntu-bootstrap install status\n'
   printf 'group_vars: %s\n' "${GROUP_VARS}"
   printf 'home:       %s\n' "${HOME_DIR}"
+  # Same order as playbook.yml
   verify_common
   verify_lab
+  verify_lmto
   verify_latex
-  verify_latex_editors
+  verify_dotnet
   verify_snaps
-  verify_flatpak
-  verify_debs
   verify_claude
   verify_chrome
-  verify_dotnet
+  verify_debs
+  verify_latex_editors
+  verify_flatpak
   verify_ollama
-  verify_lmto
+  verify_experimental
   print_summary
 }
