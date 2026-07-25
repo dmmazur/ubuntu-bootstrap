@@ -19,11 +19,27 @@
       (expected layout: {{ lmto_ui_repo }}/src/LmtoUi/LmtoUi.csproj).
   when: not (lmto_ui_csproj_stat.stat.exists | default(false))
 
+# ansible.builtin.command does NOT run a shell — "command -v" fails with
+# Errno 2 on "command". Prefer absolute apt path, then shell which.
 - name: Resolve system dotnet for LmtoUi
-  ansible.builtin.command: command -v dotnet
+  ansible.builtin.shell: |
+    set -euo pipefail
+    for p in /usr/bin/dotnet /usr/share/dotnet/dotnet; do
+      if [[ -x "${p}" ]]; then
+        printf '%s\n' "${p}"
+        exit 0
+      fi
+    done
+    if command -v dotnet >/dev/null 2>&1; then
+      command -v dotnet
+      exit 0
+    fi
+    printf 'error: dotnet not found (install .NET SDK first)\n' >&2
+    exit 1
+  args:
+    executable: /bin/bash
   register: lmto_ui_dotnet_which
   changed_when: false
-  failed_when: lmto_ui_dotnet_which.rc != 0
 
 - name: Set lmto_ui_dotnet_bin
   ansible.builtin.set_fact:

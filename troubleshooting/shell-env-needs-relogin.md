@@ -2,15 +2,15 @@
 
 ## Symptoms
 
-- Bootstrap finished successfully.
-- In the **same** terminal, `ifx`, `lmt`, `code`, etc. are “not found”.
-- After `exit` and opening Ubuntu again, they work.
+- Bootstrap finished (or failed late).
+- In the **same** terminal, `ifx`, `lmt`, `orx`, `dotnet`, `code`, etc. are “not found”.
+- After `exit` and opening Ubuntu again (or a new WSL tab), they work.
 
 ## Cause
 
 Installers update `~/.bashrc`, `/etc/profile.d/lmto.sh`, and snap PATH for
-**new** shells. A `./bootstrap*.sh` process cannot change the parent shell’s
-environment.
+**new** shells. A `./bootstrap*.sh` **child process cannot** change the parent
+shell’s environment — that is a shell limitation, not a failed package install.
 
 ## Fix (no logout)
 
@@ -24,5 +24,14 @@ Or replace the current shell with a login shell:
 exec bash -l
 ```
 
-Bootstrap scripts print the `source …/activate-env.sh` hint when they finish
-successfully.
+Bootstrap scripts print this hint when they finish (success **or** failure).
+
+## Related: lmto-ui “dotnet not found” during playbook
+
+If the log shows `No such file or directory: b'command'` while resolving
+dotnet, that was an Ansible `command` module bug (fixed: use shell +
+`/usr/bin/dotnet`). Re-run:
+
+```bash
+./scripts/bootstrap/bootstrap-lmto-ui.sh
+```

@@ -255,9 +255,9 @@ run_playbook() {
   } | tee -a "${BOOTSTRAP_LOG_DIR}/playbook.log"
 
   log "Finished (rc=${rc}). Logs: ${BOOTSTRAP_LOG_DIR}"
-  if [[ ${rc} -eq 0 ]]; then
-    suggest_activate_env
-  fi
+  # Always print — needed even when the playbook fails mid-run (e.g. lmto-ui),
+  # because common/lab/lmto often already installed PATH-dependent tools.
+  suggest_activate_env
   return "${rc}"
 }
 
@@ -265,8 +265,10 @@ run_playbook() {
 # sourceable helper so PATH / Intel setvars / snap work without logout.
 suggest_activate_env() {
   local act="${BOOTSTRAP_ROOT}/scripts/bootstrap/activate-env.sh"
-  log "New tools (ifx, lmt, snap apps, …) need a refreshed shell env."
-  log "In THIS terminal (no logout):"
+  log "────────────────────────────────────────────────────────────"
+  log "Refresh THIS terminal so ifx / lmt / orx / dotnet are on PATH:"
   log "  source ${act}"
-  log "Or start a login shell:  exec bash -l"
+  log "Or:  exec bash -l"
+  log "(A child ./bootstrap*.sh cannot change your current shell env.)"
+  log "────────────────────────────────────────────────────────────"
 }

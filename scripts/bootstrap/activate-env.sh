@@ -65,6 +65,7 @@ hash -r 2>/dev/null || true
 printf 'ubuntu-bootstrap: environment refreshed (LSYSTEM=%s)\n' "${LSYSTEM}"
 command -v ifx >/dev/null 2>&1 && printf '  ifx:    %s\n' "$(command -v ifx)"
 command -v lmt >/dev/null 2>&1 && printf '  lmt:    %s\n' "$(command -v lmt)"
+command -v orx >/dev/null 2>&1 && printf '  orx:    %s\n' "$(command -v orx)"
 command -v dotnet >/dev/null 2>&1 && printf '  dotnet: %s\n' "$(command -v dotnet)"
 command -v code >/dev/null 2>&1 && printf '  code:   %s\n' "$(command -v code)"
 if systemctl --user is-active lmto-ui &>/dev/null; then

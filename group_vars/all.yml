@@ -190,6 +190,8 @@ lmto_ui_project: "{{ lmto_ui_repo }}/src/LmtoUi"
 lmto_ui_csproj: "{{ lmto_ui_project }}/LmtoUi.csproj"
 lmto_ui_build_configuration: Release
 lmto_ui_url: "http://127.0.0.1:5100"
+# Prefer apt path; role also probes /usr/share/dotnet/dotnet
+lmto_ui_dotnet_bin_default: /usr/bin/dotnet
 # Install ~/.config/systemd/user/lmto-ui.service and enable --now
 lmto_ui_systemd_enable: true
 
