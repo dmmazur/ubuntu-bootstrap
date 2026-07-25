@@ -16,4 +16,4 @@ log "ubuntu-bootstrap — scientific (common, lab, lmto, latex, dotnet)"
 ensure_prerequisites
 run_playbook "common,lab,lmto,latex,dotnet" "$@"
 
-log "Done. Open a new shell if Intel/LMTO env vars were added."
+log "Done."

@@ -36,6 +36,13 @@ Optional before running:
 
 Verbose Ansible output: `BOOTSTRAP_VERBOSE=1 ./bootstrap.sh`
 
+After install, refresh **this** terminal (PATH / Intel `setvars` / snap) without logout:
+
+```bash
+source ./scripts/bootstrap/activate-env.sh
+# or: exec bash -l
+```
+
 ### Troubleshooting
 
 If a section fails (especially on **WSL2**), see [`troubleshooting/`](troubleshooting/README.md) — DNS/vendor repos, Intel apt poisoning later runs, snaps, LMTO `ifx` PATH, setvars warnings, clock skew, VS Code on WSL.

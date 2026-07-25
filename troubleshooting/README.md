@@ -20,5 +20,6 @@ a run still fails or you need to force old behavior (`install_snaps_on_wsl: true
 | [wsl-clock-skew-apt.md](wsl-clock-skew-apt.md) | `Release file … is not valid yet (invalid for another …)` |
 | [wsl-vscode-linux-vs-windows.md](wsl-vscode-linux-vs-windows.md) | Linux `code` snap vs Windows VS Code; LaTeX Workshop install fails |
 | [tagged-include-skips-apt.md](tagged-include-skips-apt.md) | `bootstrap-scientific.sh` rc=0 but no `dotnet` / no `apt-*.log` for tagged apt |
+| [shell-env-needs-relogin.md](shell-env-needs-relogin.md) | `ifx` / `lmt` / `code` missing until exit and reopen Ubuntu |
 
 Logs for a failed run: `/tmp/ubuntu-bootstrap-latest/` (or the path printed at the start of the bootstrap script).

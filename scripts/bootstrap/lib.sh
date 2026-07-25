@@ -255,5 +255,18 @@ run_playbook() {
   } | tee -a "${BOOTSTRAP_LOG_DIR}/playbook.log"
 
   log "Finished (rc=${rc}). Logs: ${BOOTSTRAP_LOG_DIR}"
+  if [[ ${rc} -eq 0 ]]; then
+    suggest_activate_env
+  fi
   return "${rc}"
+}
+
+# Child bootstrap processes cannot update the caller's shell. Point at a
+# sourceable helper so PATH / Intel setvars / snap work without logout.
+suggest_activate_env() {
+  local act="${BOOTSTRAP_ROOT}/scripts/bootstrap/activate-env.sh"
+  log "New tools (ifx, lmt, snap apps, …) need a refreshed shell env."
+  log "In THIS terminal (no logout):"
+  log "  source ${act}"
+  log "Or start a login shell:  exec bash -l"
 }

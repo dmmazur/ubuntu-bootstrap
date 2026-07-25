@@ -22,4 +22,4 @@ log "ubuntu-bootstrap — full install"
 ensure_prerequisites
 run_playbook ""
 
-log "Done. Open a new shell if Intel/LMTO env vars were added."
+log "Done."
