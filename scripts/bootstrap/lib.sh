@@ -29,7 +29,7 @@ setup_bootstrap_logs() {
   fi
   export BOOTSTRAP_LOG_DIR
   export ANSIBLE_LOG_PATH="${BOOTSTRAP_LOG_DIR}/ansible.log"
-  # tee makes stdout a pipe (not a TTY); force Ansible/Python colors anyway.
+  # Playbook runs on a real TTY (see run_playbook); keep colors enabled anyway.
   export ANSIBLE_FORCE_COLOR="${ANSIBLE_FORCE_COLOR:-true}"
   export PY_COLORS="${PY_COLORS:-1}"
   # Keep a stable pointer to the latest run (overwritten each bootstrap).
@@ -242,17 +242,29 @@ run_playbook() {
 
   cmd+=("${extra_args[@]}")
 
+  local playbook_log="${BOOTSTRAP_LOG_DIR}/playbook.log"
+  {
+    printf '# %s  %s\n' "$(date -Iseconds)" "${cmd[*]}"
+    printf '# Note: ansible runs on a real TTY (not | tee) to avoid BrokenPipeError\n'
+    printf '#       crash reports on Ubuntu 26 / Python 3.14. Detail → ansible.log\n'
+  } >>"${playbook_log}"
+
   log "Running: ${cmd[*]}"
+  # Do NOT pipe ansible-playbook through tee. On Ubuntu 26 (Python 3.14) that
+  # often ends with: BrokenPipeError in locking_wrapper() and an Apport dialog
+  # when the pipe closes (Ctrl+C, closed terminal, or normal cleanup).
+  # Console output stays on the TTY; ANSIBLE_LOG_PATH has the full trace.
   set +e
-  "${cmd[@]}" 2>&1 | tee -a "${BOOTSTRAP_LOG_DIR}/playbook.log"
-  local rc=${PIPESTATUS[0]}
+  "${cmd[@]}"
+  local rc=$?
   set -e
 
   {
     printf '\n# finished %s  rc=%s\n' "$(date -Iseconds)" "${rc}"
+    printf '# ansible.log → %s\n' "${ANSIBLE_LOG_PATH}"
     printf '# logs in %s\n' "${BOOTSTRAP_LOG_DIR}"
     ls -la "${BOOTSTRAP_LOG_DIR}"
-  } | tee -a "${BOOTSTRAP_LOG_DIR}/playbook.log"
+  } >>"${playbook_log}"
 
   log "Finished (rc=${rc}). Logs: ${BOOTSTRAP_LOG_DIR}"
   # Always print — needed even when the playbook fails mid-run (e.g. lmto-ui),
