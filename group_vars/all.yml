@@ -6,6 +6,8 @@
 install_claude_desktop: true
 install_google_chrome: true
 install_dotnet_sdk: true
+# Build + run LMTO UI (needs ~/repos/lmto-ui clone; after .NET SDK)
+install_lmto_ui: true
 install_ollama: false
 install_flatpak: false
 # Snaps (VS Code, Telegram, …). On WSL, skipped unless install_snaps_on_wsl: true
@@ -180,6 +182,16 @@ dotnet_sdk_package: dotnet-sdk-8.0
 dotnet_backports_ppa: "ppa:dotnet/backports"
 # Add backports when Ubuntu version is >= this (needed for .NET 8 on 26.04+)
 dotnet_backports_min_ubuntu: "26.04"
+
+# --- LMTO UI (Blazor; after dotnet section) ---
+# Clone: git clone https://github.com/dmmazur/lmto-ui.git ~/repos/lmto-ui
+lmto_ui_repo: "{{ bootstrap_home }}/repos/lmto-ui"
+lmto_ui_project: "{{ lmto_ui_repo }}/src/LmtoUi"
+lmto_ui_csproj: "{{ lmto_ui_project }}/LmtoUi.csproj"
+lmto_ui_build_configuration: Release
+lmto_ui_url: "http://127.0.0.1:5100"
+# Install ~/.config/systemd/user/lmto-ui.service and enable --now
+lmto_ui_systemd_enable: true
 
 # --- Ollama (official linux amd64 tarball into /usr) ---
 ollama_tarball_url: https://ollama.com/download/ollama-linux-amd64.tar.zst

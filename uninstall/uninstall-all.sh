@@ -4,7 +4,7 @@
 #
 # Reverse of playbook install order:
 # experimental → ollama → flatpak → latex-editors → debs → chrome → claude →
-# snaps → dotnet → latex → lmto → lab → common
+# snaps → lmto-ui → dotnet → latex → lmto → lab → common
 set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh
@@ -26,6 +26,7 @@ sections=(
   uninstall-chrome.sh
   uninstall-claude.sh
   uninstall-snaps.sh
+  uninstall-lmto-ui.sh
   uninstall-dotnet.sh
   uninstall-latex.sh
   uninstall-lmto.sh

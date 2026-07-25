@@ -1,0 +1,17 @@
+[Unit]
+Description=LMTO UI (per-user, ubuntu-bootstrap)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory={{ lmto_ui_repo }}
+# System dotnet from apt (ubuntu-bootstrap dotnet section), not ~/.dotnet
+ExecStart={{ lmto_ui_dotnet_bin }} run --project {{ lmto_ui_project }} --no-launch-profile
+Restart=on-failure
+RestartSec=3
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=LSYSTEM={{ lmto_lsystem }}
+Environment=PATH={{ bootstrap_home }}/bin/{{ lmto_lsystem }}:{{ bootstrap_home }}/bin:/usr/local/bin:/usr/bin:/bin
+
+[Install]
+WantedBy=default.target

@@ -423,6 +423,42 @@ verify_chrome() {
   check_apt google-chrome-stable
 }
 
+verify_lmto_ui() {
+  section "lmto-ui"
+  if [[ "$(yaml_bool install_lmto_ui)" != "true" ]]; then
+    skipped "install_lmto_ui is false — section disabled"
+    return 0
+  fi
+  local repo project csproj unit url
+  repo="$(yaml_scalar lmto_ui_repo)"
+  # group_vars uses Jinja — resolve ~ / home
+  repo="${repo//\{\{ bootstrap_home \}\}/${HOME_DIR}}"
+  repo="${repo//\"/}"
+  [[ "${repo}" == *"{{"* ]] && repo="${HOME_DIR}/repos/lmto-ui"
+  project="${repo}/src/LmtoUi"
+  csproj="${project}/LmtoUi.csproj"
+  unit="${HOME_DIR}/.config/systemd/user/lmto-ui.service"
+  url="$(yaml_scalar lmto_ui_url)"
+  [[ -z "${url}" || "${url}" == *"{{"* ]] && url="http://127.0.0.1:5100"
+
+  check_file "LmtoUi.csproj" "${csproj}"
+  if [[ -f "${unit}" ]]; then
+    ok "systemd user unit: ${unit}"
+  else
+    missing "systemd user unit: ${unit}"
+  fi
+  local uid runtime
+  uid="$(id -u)"
+  runtime="/run/user/${uid}"
+  if [[ -d "${runtime}" ]] && systemctl --user is-active lmto-ui &>/dev/null; then
+    ok "lmto-ui user service active → ${url}"
+  elif [[ -d "${runtime}" ]]; then
+    missing "lmto-ui user service not active (systemctl --user status lmto-ui)"
+  else
+    skipped "user systemd runtime missing — start with: cd ${repo} && dotnet run --project src/LmtoUi"
+  fi
+}
+
 verify_dotnet() {
   section "dotnet-sdk"
   if [[ "$(yaml_bool install_dotnet_sdk)" != "true" ]]; then
@@ -670,6 +706,7 @@ verify_all() {
   verify_lmto
   verify_latex
   verify_dotnet
+  verify_lmto_ui
   verify_snaps
   verify_claude
   verify_chrome

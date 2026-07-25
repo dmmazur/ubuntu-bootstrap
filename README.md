@@ -13,7 +13,7 @@ cd ubuntu-bootstrap
 ./bootstrap.sh
 
 # Or split stacks:
-./bootstrap-scientific.sh    # common, lab, lmto, latex, dotnet
+./bootstrap-scientific.sh    # common, lab, lmto, latex, dotnet, lmto-ui
 ./bootstrap-development.sh   # snaps, claude, chrome, debs, latex-editors, flatpak, ollama, experimental
 
 # Or one section at a time:
@@ -43,6 +43,15 @@ source ./scripts/bootstrap/activate-env.sh
 # or: exec bash -l
 ```
 
+**LMTO UI** (after `dotnet` / `lmto-ui` section): http://127.0.0.1:5100
+
+```bash
+./scripts/bootstrap/bootstrap-lmto-ui.sh   # build + start (needs ~/repos/lmto-ui)
+./stop-lmto-ui.sh                         # stop service
+./stop-lmto-ui.sh --disable               # stop + disable autostart
+./uninstall/uninstall-lmto-ui.sh          # stop + remove systemd unit (keeps repo)
+```
+
 ### Troubleshooting
 
 If a section fails (especially on **WSL2**), see [`troubleshooting/`](troubleshooting/README.md) — DNS/vendor repos, Intel apt poisoning later runs, snaps, LMTO `ifx` PATH, setvars warnings, clock skew, VS Code on WSL.
@@ -68,6 +77,7 @@ Per-section undo scripts live in [`uninstall/`](uninstall/README.md) (purge pack
 | `install_claude_desktop` | `true` | `claude` |
 | `install_google_chrome` | `true` | `chrome` |
 | `install_dotnet_sdk` | `true` | `dotnet` (.NET 8 SDK via apt; backports PPA on 26.04+) |
+| `install_lmto_ui` | `true` | `lmto-ui` (build + run; needs `~/repos/lmto-ui`) |
 | `install_lmto` | `true` | `lmto` |
 | `lmto_nfs_enable` | `false` | NFS mount + `/dep24` convenience links |
 | `install_debs` | `false` | Cursor / VeraCrypt from `files/` |
@@ -95,7 +105,9 @@ Section banners (`>>> COMMON`, …) and per-package task names show progress.
 | Script | Section |
 |--------|---------|
 | `./bootstrap.sh` | Everything (enabled in `group_vars/all.yml`) |
-| `./bootstrap-scientific.sh` | `common`, `lab`, `lmto`, `latex`, `dotnet` |
+| `./bootstrap-scientific.sh` | `common`, `lab`, `lmto`, `latex`, `dotnet`, `lmto-ui` |
+| `./scripts/bootstrap/bootstrap-lmto-ui.sh` | Build + systemd-run LMTO UI (`~/repos/lmto-ui`) |
+| `./stop-lmto-ui.sh` | Stop LMTO UI user service (`--disable` to also disable autostart) |
 | `./bootstrap-development.sh` | `snaps`, `claude`, `chrome`, `debs`, `latex-editors`, `flatpak`, `ollama`, `experimental` (forces on debs/flatpak/ollama/experimental) |
 | `./scripts/bootstrap/bootstrap-common.sh` | Common apt packages |
 | `./scripts/bootstrap/bootstrap-lab.sh` | Lab apt packages |
@@ -136,6 +148,7 @@ Read expectations from `group_vars/all.yml` and report **OK / MISSING / SKIP** (
 ./scripts/verify/verify-claude.sh
 ./scripts/verify/verify-chrome.sh
 ./scripts/verify/verify-dotnet.sh
+./scripts/verify/verify-lmto-ui.sh
 ./scripts/verify/verify-debs.sh           # SKIP when install_debs is false
 ./scripts/verify/verify-flatpak.sh
 ./scripts/verify/verify-ollama.sh
@@ -185,9 +198,9 @@ Writes `~/Downloads/lmto-setup-report-*.txt`. Copy `~/src` separately via rsync.
 
 Install order (full `./bootstrap.sh`):
 
-1. `common` → 2. `lab` → 3. `lmto` → 4. `latex` → 5. `dotnet` → 6. `snaps` →
-7. `claude` → 8. `chrome` → 9. `debs` → 10. `latex-editors` → 11. `flatpak` →
-12. `ollama` → 13. `experimental`
+1. `common` → 2. `lab` → 3. `lmto` → 4. `latex` → 5. `dotnet` → 6. `lmto-ui` →
+7. `snaps` → 8. `claude` → 9. `chrome` → 10. `debs` → 11. `latex-editors` →
+12. `flatpak` → 13. `ollama` → 14. `experimental`
 
 | Tag | What it installs |
 |-----|------------------|
@@ -206,6 +219,7 @@ Install order (full `./bootstrap.sh`):
 | `latex-texmf` | `~/texmf` layout + optional `files/latex-userdata.tgz` |
 | `latex-smoke` | `pdflatex` smoke test → `~/TeX/smoke/smoke.pdf` |
 | `dotnet` | .NET 8 SDK (`dotnet-sdk-8.0`; built-in apt on 22.04/24.04, `ppa:dotnet/backports` on 26.04+) |
+| `lmto-ui` | Build/run Blazor LMTO UI from `~/repos/lmto-ui` → http://127.0.0.1:5100 |
 | `snaps` | VS Code, Telegram, Claude Code |
 | `claude` | Claude Desktop apt repo + package |
 | `chrome` | Google Chrome apt repo + package |
@@ -230,6 +244,7 @@ BOOTSTRAP_VERBOSE=1 ./scripts/bootstrap/bootstrap-snaps.sh
 | `bootstrap.sh` | Full first-time install entrypoint |
 | `bootstrap-scientific.sh` | Scientific stack entrypoint |
 | `bootstrap-development.sh` | Development / desktop stack entrypoint |
+| `stop-lmto-ui.sh` | Stop LMTO UI (`systemctl --user stop lmto-ui`) |
 | `verify-installed.sh` | Full install-status check (no Ansible) |
 | `ansible.cfg` | Defaults (local inventory, become) |
 | `inventory.ini` | `localhost` with local connection |

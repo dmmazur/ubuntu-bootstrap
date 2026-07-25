@@ -67,5 +67,8 @@ command -v ifx >/dev/null 2>&1 && printf '  ifx:    %s\n' "$(command -v ifx)"
 command -v lmt >/dev/null 2>&1 && printf '  lmt:    %s\n' "$(command -v lmt)"
 command -v dotnet >/dev/null 2>&1 && printf '  dotnet: %s\n' "$(command -v dotnet)"
 command -v code >/dev/null 2>&1 && printf '  code:   %s\n' "$(command -v code)"
+if systemctl --user is-active lmto-ui &>/dev/null; then
+  printf '  lmto-ui: http://127.0.0.1:5100 (systemd --user)\n'
+fi
 
 unset -f _ub_activate_path_prepend

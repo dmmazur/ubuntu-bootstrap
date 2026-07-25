@@ -1,6 +1,6 @@
 ---
 # Local Ubuntu workstation bootstrap.
-# Order: common → lab → lmto → latex → dotnet → snaps → claude → chrome →
+# Order: common → lab → lmto → latex → dotnet → lmto-ui → snaps → claude → chrome →
 #         debs → latex-editors → flatpak → ollama → experimental
 # Tip: add -v or -vv for more Ansible detail.
 # Command logs: {{ bootstrap_log_dir }} (see scripts/bootstrap/lib.sh / /tmp/ubuntu-bootstrap-latest)
@@ -192,6 +192,21 @@
         logged_apt_update: true
       when: install_dotnet_sdk | bool
       tags: [dotnet]
+
+    # --- lmto-ui (needs .NET SDK + ~/repos/lmto-ui) ---
+    - name: ">>> LMTO-UI — Blazor app at {{ lmto_ui_project }}"
+      ansible.builtin.debug:
+        msg: "Build + systemd user service → {{ lmto_ui_url }}"
+      when: install_lmto_ui | bool
+      tags: [lmto-ui]
+
+    - name: Build and run LMTO UI
+      ansible.builtin.include_role:
+        name: lmto_ui
+        apply:
+          tags: [lmto-ui]
+      when: install_lmto_ui | bool
+      tags: [lmto-ui]
 
     # --- snaps (before latex-editors so `code` may exist for extensions) ---
     - name: ">>> SNAPS — skipped on WSL (set install_snaps_on_wsl: true to force)"

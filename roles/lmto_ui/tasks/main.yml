@@ -1,0 +1,113 @@
+---
+# Build and run LMTO UI (Blazor) after .NET SDK is installed.
+# Expects clone at {{ lmto_ui_repo }} (default ~/repos/lmto-ui).
+
+- name: ">>> LMTO-UI — build and run {{ lmto_ui_project }}"
+  ansible.builtin.debug:
+    msg: "project={{ lmto_ui_project }} url={{ lmto_ui_url }}"
+
+- name: Require LmtoUi project on disk
+  ansible.builtin.stat:
+    path: "{{ lmto_ui_csproj }}"
+  register: lmto_ui_csproj_stat
+
+- name: Fail if LmtoUi project is missing
+  ansible.builtin.fail:
+    msg: >-
+      LmtoUi not found at {{ lmto_ui_csproj }}.
+      Clone https://github.com/dmmazur/lmto-ui into {{ lmto_ui_repo }}
+      (expected layout: {{ lmto_ui_repo }}/src/LmtoUi/LmtoUi.csproj).
+  when: not (lmto_ui_csproj_stat.stat.exists | default(false))
+
+- name: Resolve system dotnet for LmtoUi
+  ansible.builtin.command: command -v dotnet
+  register: lmto_ui_dotnet_which
+  changed_when: false
+  failed_when: lmto_ui_dotnet_which.rc != 0
+
+- name: Set lmto_ui_dotnet_bin
+  ansible.builtin.set_fact:
+    lmto_ui_dotnet_bin: "{{ lmto_ui_dotnet_which.stdout | trim }}"
+
+- name: Ensure systemd user unit directory exists
+  ansible.builtin.file:
+    path: "{{ bootstrap_home }}/.config/systemd/user"
+    state: directory
+    owner: "{{ bootstrap_user }}"
+    group: "{{ bootstrap_group }}"
+    mode: "0755"
+  when: lmto_ui_systemd_enable | bool
+
+- name: Restore and build LmtoUi (logged, as login user)
+  ansible.builtin.shell: |
+    set -uo pipefail
+    mkdir -p "{{ bootstrap_log_dir }}"
+    logf="{{ bootstrap_log_dir }}/lmto-ui-build.log"
+    set +e
+    {
+      printf '# %s  dotnet restore+build (user=%s) %s\n' \
+        "$(date -Iseconds)" "{{ bootstrap_user }}" "{{ lmto_ui_project }}"
+      sudo -u "{{ bootstrap_user }}" -H \
+        env HOME="{{ bootstrap_home }}" \
+            PATH="/usr/local/bin:/usr/bin:/bin" \
+        bash -lc '
+          set -euo pipefail
+          cd "{{ lmto_ui_repo }}"
+          "{{ lmto_ui_dotnet_bin }}" restore "{{ lmto_ui_project }}"
+          "{{ lmto_ui_dotnet_bin }}" build "{{ lmto_ui_project }}" -c {{ lmto_ui_build_configuration }} --no-restore
+        '
+    } 2>&1 | tee -a "${logf}"
+    rc=${PIPESTATUS[0]}
+    set -e
+    exit "${rc}"
+  args:
+    executable: /bin/bash
+
+- name: Install LmtoUi user systemd unit
+  ansible.builtin.template:
+    src: lmto-ui.service.j2
+    dest: "{{ bootstrap_home }}/.config/systemd/user/lmto-ui.service"
+    owner: "{{ bootstrap_user }}"
+    group: "{{ bootstrap_group }}"
+    mode: "0644"
+  when: lmto_ui_systemd_enable | bool
+
+- name: Enable and start LmtoUi user service
+  ansible.builtin.shell: |
+    set -uo pipefail
+    mkdir -p "{{ bootstrap_log_dir }}"
+    logf="{{ bootstrap_log_dir }}/lmto-ui-systemd.log"
+    uid="$(id -u "{{ bootstrap_user }}")"
+    runtime="/run/user/${uid}"
+    set +e
+    {
+      printf '# %s  systemctl --user enable --now lmto-ui\n' "$(date -Iseconds)"
+      if [[ ! -d "${runtime}" ]]; then
+        printf 'warning: %s missing — user systemd unavailable\n' "${runtime}"
+        printf 'Start later as %s:\n' "{{ bootstrap_user }}"
+        printf '  systemctl --user daemon-reload && systemctl --user enable --now lmto-ui\n'
+        printf 'Or: cd %s && dotnet run --project src/LmtoUi\n' "{{ lmto_ui_repo }}"
+        exit 0
+      fi
+      sudo -u "{{ bootstrap_user }}" -H \
+        env XDG_RUNTIME_DIR="${runtime}" DBUS_SESSION_BUS_ADDRESS="unix:path=${runtime}/bus" \
+        systemctl --user daemon-reload
+      sudo -u "{{ bootstrap_user }}" -H \
+        env XDG_RUNTIME_DIR="${runtime}" DBUS_SESSION_BUS_ADDRESS="unix:path=${runtime}/bus" \
+        systemctl --user enable --now lmto-ui
+      sudo -u "{{ bootstrap_user }}" -H \
+        env XDG_RUNTIME_DIR="${runtime}" DBUS_SESSION_BUS_ADDRESS="unix:path=${runtime}/bus" \
+        systemctl --user --no-pager status lmto-ui || true
+    } 2>&1 | tee -a "${logf}"
+    rc=${PIPESTATUS[0]}
+    set -e
+    exit "${rc}"
+  args:
+    executable: /bin/bash
+  when: lmto_ui_systemd_enable | bool
+
+- name: Announce LmtoUi URL
+  ansible.builtin.debug:
+    msg: >-
+      LmtoUi → {{ lmto_ui_url }}
+      (stop: ./stop-lmto-ui.sh ; status: systemctl --user status lmto-ui)
