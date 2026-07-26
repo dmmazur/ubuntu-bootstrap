@@ -442,23 +442,27 @@ verify_lmto_ui() {
   [[ -z "${url}" || "${url}" == *"{{"* ]] && url="http://127.0.0.1:5100"
 
   check_file "LmtoUi.csproj" "${csproj}"
-  if [[ -f "${unit}" ]]; then
-    ok "systemd user unit: ${unit}"
+  if [[ "$(yaml_bool lmto_ui_systemd_enable)" == "true" ]]; then
+    if [[ -f "${unit}" ]]; then
+      ok "systemd user unit: ${unit}"
+    else
+      missing "systemd user unit: ${unit}"
+    fi
+    local uid runtime
+    uid="$(id -u)"
+    runtime="/run/user/${uid}"
+    if [[ -d "${runtime}" ]] && systemctl --user is-active lmto-ui &>/dev/null; then
+      ok "lmto-ui user service active → ${url}"
+    elif [[ -d "${runtime}" ]]; then
+      missing "lmto-ui user service not active (systemctl --user status lmto-ui)"
+    else
+      skipped "user systemd runtime missing — start with: cd ${repo} && dotnet run --project src/LmtoUi"
+    fi
   else
-    missing "systemd user unit: ${unit}"
-  fi
-  local uid runtime
-  uid="$(id -u)"
-  runtime="/run/user/${uid}"
-  if [[ -d "${runtime}" ]] && systemctl --user is-active lmto-ui &>/dev/null; then
-    ok "lmto-ui user service active → ${url}"
-  elif [[ -d "${runtime}" ]]; then
-    missing "lmto-ui user service not active (systemctl --user status lmto-ui)"
-  else
-    skipped "user systemd runtime missing — start with: cd ${repo} && dotnet run --project src/LmtoUi"
+    skipped "lmto_ui_systemd_enable is false — no autostart expected"
+    skipped "start manually: cd ${repo} && dotnet run --project src/LmtoUi → ${url}"
   fi
 }
-
 verify_dotnet() {
   section "dotnet-sdk"
   if [[ "$(yaml_bool install_dotnet_sdk)" != "true" ]]; then

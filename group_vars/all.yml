@@ -192,8 +192,10 @@ lmto_ui_build_configuration: Release
 lmto_ui_url: "http://127.0.0.1:5100"
 # Prefer apt path; role also probes /usr/share/dotnet/dotnet
 lmto_ui_dotnet_bin_default: /usr/bin/dotnet
-# Install ~/.config/systemd/user/lmto-ui.service and enable --now
-lmto_ui_systemd_enable: true
+# false: build only (no systemd unit / no auto-start). Start manually:
+#   cd ~/repos/lmto-ui && dotnet run --project src/LmtoUi
+# true: install user unit and systemctl --user enable --now lmto-ui
+lmto_ui_systemd_enable: false
 
 # --- Ollama (official linux amd64 tarball into /usr) ---
 ollama_tarball_url: https://ollama.com/download/ollama-linux-amd64.tar.zst

@@ -14,7 +14,9 @@ cd ubuntu-bootstrap
 
 # Or split stacks:
 ./bootstrap-scientific.sh    # common, lab, lmto, latex, dotnet, lmto-ui
+./bscnt.sh                   # same as bootstrap-scientific.sh
 ./bootstrap-development.sh   # snaps, claude, chrome, debs, latex-editors, flatpak, ollama, experimental
+./bdev.sh                    # same as bootstrap-development.sh
 
 # Or one section at a time:
 ./scripts/bootstrap/bootstrap-common.sh
@@ -43,10 +45,12 @@ source ./scripts/bootstrap/activate-env.sh
 # or: exec bash -l
 ```
 
-**LMTO UI** (after `dotnet` / `lmto-ui` section): http://127.0.0.1:5100
+**LMTO UI** (after `dotnet` / `lmto-ui` section): builds by default; **does not** auto-start.
 
 ```bash
-./scripts/bootstrap/bootstrap-lmto-ui.sh   # build + start (needs ~/repos/lmto-ui)
+./scripts/bootstrap/bootstrap-lmto-ui.sh   # build (needs ~/repos/lmto-ui)
+cd ~/repos/lmto-ui && dotnet run --project src/LmtoUi   # start → http://127.0.0.1:5100
+# Optional autostart: set lmto_ui_systemd_enable: true, then:
 ./stop-lmto-ui.sh                         # stop service
 ./stop-lmto-ui.sh --disable               # stop + disable autostart
 ./uninstall/uninstall-lmto-ui.sh          # stop + remove systemd unit (keeps repo)
@@ -77,7 +81,8 @@ Per-section undo scripts live in [`uninstall/`](uninstall/README.md) (purge pack
 | `install_claude_desktop` | `true` | `claude` |
 | `install_google_chrome` | `true` | `chrome` |
 | `install_dotnet_sdk` | `true` | `dotnet` (.NET 8 SDK via apt; backports PPA on 26.04+) |
-| `install_lmto_ui` | `true` | `lmto-ui` (build + run; needs `~/repos/lmto-ui`) |
+| `install_lmto_ui` | `true` | `lmto-ui` (build; needs `~/repos/lmto-ui`) |
+| `lmto_ui_systemd_enable` | `false` | auto-start LMTO UI via user systemd (off by default) |
 | `install_lmto` | `true` | `lmto` |
 | `lmto_nfs_enable` | `false` | NFS mount + `/dep24` convenience links |
 | `install_debs` | `false` | Cursor / VeraCrypt from `files/` |
@@ -105,10 +110,10 @@ Section banners (`>>> COMMON`, …) and per-package task names show progress.
 | Script | Section |
 |--------|---------|
 | `./bootstrap.sh` | Everything (enabled in `group_vars/all.yml`) |
-| `./bootstrap-scientific.sh` | `common`, `lab`, `lmto`, `latex`, `dotnet`, `lmto-ui` |
+| `./bootstrap-scientific.sh` / `./bscnt.sh` | `common`, `lab`, `lmto`, `latex`, `dotnet`, `lmto-ui` |
 | `./scripts/bootstrap/bootstrap-lmto-ui.sh` | Build + systemd-run LMTO UI (`~/repos/lmto-ui`) |
 | `./stop-lmto-ui.sh` | Stop LMTO UI user service (`--disable` to also disable autostart) |
-| `./bootstrap-development.sh` | `snaps`, `claude`, `chrome`, `debs`, `latex-editors`, `flatpak`, `ollama`, `experimental` (forces on debs/flatpak/ollama/experimental) |
+| `./bootstrap-development.sh` / `./bdev.sh` | `snaps`, `claude`, `chrome`, `debs`, `latex-editors`, `flatpak`, `ollama`, `experimental` (forces on debs/flatpak/ollama/experimental) |
 | `./scripts/bootstrap/bootstrap-common.sh` | Common apt packages |
 | `./scripts/bootstrap/bootstrap-lab.sh` | Lab apt packages |
 | `./scripts/bootstrap/bootstrap-latex.sh` | LaTeX (all phases; self-contained) |
@@ -219,7 +224,7 @@ Install order (full `./bootstrap.sh`):
 | `latex-texmf` | `~/texmf` layout + optional `files/latex-userdata.tgz` |
 | `latex-smoke` | `pdflatex` smoke test → `~/TeX/smoke/smoke.pdf` |
 | `dotnet` | .NET 8 SDK (`dotnet-sdk-8.0`; built-in apt on 22.04/24.04, `ppa:dotnet/backports` on 26.04+) |
-| `lmto-ui` | Build/run Blazor LMTO UI from `~/repos/lmto-ui` → http://127.0.0.1:5100 |
+| `lmto-ui` | Build Blazor LMTO UI from `~/repos/lmto-ui` (autostart off; `lmto_ui_systemd_enable`) |
 | `snaps` | VS Code, Telegram, Claude Code |
 | `claude` | Claude Desktop apt repo + package |
 | `chrome` | Google Chrome apt repo + package |
@@ -242,8 +247,8 @@ BOOTSTRAP_VERBOSE=1 ./scripts/bootstrap/bootstrap-snaps.sh
 | Path | Purpose |
 |------|---------|
 | `bootstrap.sh` | Full first-time install entrypoint |
-| `bootstrap-scientific.sh` | Scientific stack entrypoint |
-| `bootstrap-development.sh` | Development / desktop stack entrypoint |
+| `bootstrap-scientific.sh` / `bscnt.sh` | Scientific stack entrypoint |
+| `bootstrap-development.sh` / `bdev.sh` | Development / desktop stack entrypoint |
 | `stop-lmto-ui.sh` | Stop LMTO UI (`systemctl --user stop lmto-ui`) |
 | `verify-installed.sh` | Full install-status check (no Ansible) |
 | `ansible.cfg` | Defaults (local inventory, become) |

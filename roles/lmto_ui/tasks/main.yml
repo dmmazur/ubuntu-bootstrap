@@ -122,8 +122,17 @@
     executable: /bin/bash
   when: lmto_ui_systemd_enable | bool
 
-- name: Announce LmtoUi URL
+- name: Announce LmtoUi URL (systemd autostart on)
   ansible.builtin.debug:
     msg: >-
       LmtoUi → {{ lmto_ui_url }}
       (stop: ./stop-lmto-ui.sh ; status: systemctl --user status lmto-ui)
+  when: lmto_ui_systemd_enable | bool
+
+- name: Announce LmtoUi build (no autostart)
+  ansible.builtin.debug:
+    msg: >-
+      LmtoUi built (systemd autostart off). Start manually:
+      cd {{ lmto_ui_repo }} && dotnet run --project src/LmtoUi
+      → {{ lmto_ui_url }}
+  when: not (lmto_ui_systemd_enable | bool)
